@@ -1,29 +1,30 @@
 #include "mindvision.h"
 
 #include <iostream>
+#include <QProcess>
 using namespace std;
 
 int main(int argc, char *argv[])
 {
     MindVision mv;
+    string cmd;
 
-    if(string(argv[1]) == "list") {
-        mv.list();
-        return 0;
-    }
+    try {
+        if(string(argv[1]) == "list") {
+            mv.list();
+            return 0;
+        } else if(string(argv[1]) == "open") {
+            mv.open(argv[2]);
+        }
 
-
-    if(string(argv[1]) == "open") {
-        mv.open(argv[2]);
-    } else {
+        do {
+            if(cin.eof()) break;
+            cin >> cmd;
+        } while(cmd != "exit");
+    } catch(exception& e) {
         return 1;
     }
 
-    string cmd;
-
-    do {
-        cin >> cmd;
-    } while(cmd != "exit");
-
+    cerr << "exit" << endl;
     return 0;
 }

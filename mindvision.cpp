@@ -1,10 +1,9 @@
 #include "mindvision.h"
 
 
-MindVision::MindVision():camera(0),log("x.log")
+MindVision::MindVision():camera(0)
 {
-    rdbuf = cerr.rdbuf(log.rdbuf());
-    CameraSdkInit(1);    //sdk初始化  0 English 1中文
+    cerr << CameraSdkInit(1) << endl;    //sdk初始化  0 English 1中文
 }
 
 MindVision::~MindVision()
@@ -50,17 +49,26 @@ void MindVision::list()
 }
 
 void MindVision::open(string cameraName) {
-    auto b = CameraInitEx2(&cameraName[0],&camera);
+    log.open(cameraName + ".log");
+    rdbuf = cerr.rdbuf(log.rdbuf());
 
-    b = CameraGetCapability(camera,&capability);
+    auto status = CameraInitEx2(&cameraName[0],&camera);
+    cerr << "CameraInitEx2 " << status << endl;
+    if(status != CAMERA_STATUS_SUCCESS) {
+        cout << "failed " << endl;
+        throw runtime_error("相机初始化失败！");
+    }
+
+
+    cerr << "CameraGetCapability " << CameraGetCapability(camera,&capability) << endl;
 
     rgbBufferLength = capability.sResolutionRange.iHeightMax * capability.sResolutionRange.iWidthMax * (capability.sIspCapacity.bMonoSensor ? 1 : 3);
     rgbBuffer = new unsigned char[rgbBufferLength];
 
-    b = CameraPlay(camera);
+    cerr << "CameraPlay " << CameraPlay(camera) << endl;
 
-    if(capability.sIspCapacity.bMonoSensor) b = CameraSetIspOutFormat(camera,CAMERA_MEDIA_TYPE_MONO8);
-    else b = CameraSetIspOutFormat(camera,CAMERA_MEDIA_TYPE_RGB8);
+    if(capability.sIspCapacity.bMonoSensor) cerr << CameraSetIspOutFormat(camera,CAMERA_MEDIA_TYPE_MONO8) << endl;
+    else cerr << CameraSetIspOutFormat(camera,CAMERA_MEDIA_TYPE_RGB8) << endl;
 
     pipeName = cameraName;
     start();
@@ -70,20 +78,29 @@ void MindVision::run(){
     QLocalServer::removeServer(pipeName.c_str());
     QLocalServer server;
     server.listen(pipeName.c_str());
-    cout << pipeName << endl;
-
+    cout << "succeeded " << pipeName << ' ' << endl;
+    static int i = 0;
     while(server.isListening() && !pipeName.empty()) {
-        if(!server.waitForNewConnection(1000)) continue;
+        if(!server.waitForNewConnection(1000)) {
+            cerr << 'l';
+            continue;
+        }
+
+        cerr << 'n';
+
         auto sock = server.nextPendingConnection();
 
         while(QLocalSocket::ConnectedState == sock->state() && !pipeName.empty()) {
-            if (!sock->waitForReadyRead(1000)) continue;
+            if (!sock->waitForReadyRead(1000)) {
+                cerr << 'x' << endl;
+                continue;
+            }
 
             auto c = sock->readLine();
             tSdkFrameHead        frameHead;
             unsigned char* rawBuffer;
 
-            cerr << CameraGetImageBuffer(camera,&frameHead,&rawBuffer,2000) << ' ';
+            cerr << CameraGetImageBuffer(camera,&frameHead,&rawBuffer,10000) << ' ';
             cerr << CameraImageProcess(camera,rawBuffer,rgbBuffer,&frameHead) << ' ';
             cerr << CameraReleaseImageBuffer(camera,rawBuffer) << endl;
 
@@ -92,6 +109,8 @@ void MindVision::run(){
                << capability.sResolutionRange.iHeightMax << ' '
                << (capability.sIspCapacity.bMonoSensor ? 1 : 3) << ' ' << endl;
 
+            cerr << ss.str() << endl;
+
             sock->write(ss.str().data(),ss.str().size());
             sock->write((const char*)rgbBuffer,rgbBufferLength);
         }
@@ -99,5 +118,6 @@ void MindVision::run(){
         sock->disconnectFromServer();
     }
 
+     cerr << 'c';
     server.close();
 }
