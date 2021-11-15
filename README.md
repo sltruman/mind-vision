@@ -2,7 +2,7 @@
 
 ## 接口
 
-### 枚举设备
+### 相机列表
 
 ```bash
 mind-vision list
@@ -16,22 +16,31 @@ mind-vision list
 'U3V MV-SUA630C MV-SUA630C#0 MvCamera_f622_d6300 1.0.0.0 CMOS 6.3M USB3.0 041032420559 0\n'
 ```
 
-### 播放视频流
+### 获取相机视频流
 
 ```bash
-mind-vision play <产品昵称>
+mind-vision open <产品昵称>
 
 #输入
-mind-vision play MV-SUA630C#0
+mind-vision open MV-SUA630C#0
 
 #输出
-'MV-SUA630C#0.pipe\n'	#套接字连接地址
+'True MV-SUA630C#0 \n'	#结果 套接字连接地址
 
-#套接字输出
-'3000 2000 3\n'
 #套接字输入
 'next\n'
 #套接字输出
+'3000 2000 3\n'
+#套接字输出
 <二进制数据流>
 ```
+
+### 相机触发模式
+
+```bash
+```
+
+### 曝光控制
+
+### 白平衡
 
