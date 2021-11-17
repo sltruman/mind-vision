@@ -1,6 +1,10 @@
 #ifndef MINDVISION_H
 #define MINDVISION_H
 
+#ifdef WIN32
+#include <windows.h>
+#endif
+
 #include <CameraApi.h>
 #include <CameraStatus.h>
 #include <QLocalServer>
@@ -20,6 +24,7 @@ public:
     ~MindVision();
     void list();
     void open(string cameraName);
+    void test(string cameraName);
     void stop();
     void run() override;
 
@@ -60,7 +65,7 @@ public:
 
 private:
     ofstream log;
-    typeof(cerr.rdbuf()) rdbuf;
+    streambuf* rdbuf;
 
     string pipeName;
     int camera;

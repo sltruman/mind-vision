@@ -6,12 +6,15 @@ CONFIG -= app_bundle
 # In order to do so, uncomment the following line.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
+win32:INCLUDEPATH += "C:\Program Files\MindVision\Demo\VC++\Include"
+
 SOURCES += \
         main.cpp \
         mindvision.cpp
 
 
-LIBS += -lMVSDK
+unix:LIBS += -lMVSDK
+win32:LIBS += -L"C:\Program Files\MindVision\SDK" -lMVCAMSDK
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

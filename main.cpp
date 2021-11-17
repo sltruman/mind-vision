@@ -1,11 +1,13 @@
 #include "mindvision.h"
 
 #include <iostream>
-#include <QProcess>
+#include <fstream>
 using namespace std;
 
 int main(int argc, char *argv[])
 {
+    ofstream log;
+
     MindVision mv;
     string cmd = argv[1];
 
@@ -14,7 +16,13 @@ int main(int argc, char *argv[])
             mv.list();
             return 0;
         } else if(cmd == "open") {
+            log.open(string(argv[2]) + ".log");
+            cerr.rdbuf(log.rdbuf());
             mv.open(argv[2]);
+        } else if(cmd == "test") {
+            log.open(string(argv[2]) + ".log");
+            cerr.rdbuf(log.rdbuf());
+            mv.test(argv[2]);
         }
 
         do {
@@ -105,10 +113,9 @@ int main(int argc, char *argv[])
             }
         } while(cmd != "exit");
 
-    } catch(exception& e) {
-        return 1;
-    }
+    } catch(exception& e) {}
 
     cerr << "exit" << endl;
+    log.close();
     return 0;
 }

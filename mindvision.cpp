@@ -1,16 +1,13 @@
-#include "mindvision.h"
+﻿#include "mindvision.h"
 
 
-MindVision::MindVision():camera(0)
+MindVision::MindVision() : camera(0)
 {
     cerr << "CameraSdkInit " << CameraSdkInit(1) << endl;    //sdk初始化  0 English 1中文
 }
 
 MindVision::~MindVision()
 {
-    cerr.rdbuf(rdbuf);
-    log.close();
-
     if(!camera) return;
 
     pipeName.clear();
@@ -27,20 +24,20 @@ void MindVision::list()
     CameraEnumerateDevice(cameraEnumList,&cameraCounts);
 
     for(auto i=0;i < cameraCounts;i++) {
-        cout << cameraEnumList[i].acProductSeries << ' '
-           << cameraEnumList[i].acProductName << ' '
-           << cameraEnumList[i].acFriendlyName << ' '
-           << cameraEnumList[i].acLinkName << ' '
-           << cameraEnumList[i].acDriverVersion << ' '
-           << cameraEnumList[i].acSensorType << ' '
-           << cameraEnumList[i].acPortType << ' '
-           << cameraEnumList[i].acSn << ' '
+        cout << cameraEnumList[i].acProductSeries << ','
+           << cameraEnumList[i].acProductName << ','
+           << cameraEnumList[i].acFriendlyName << ','
+           << cameraEnumList[i].acLinkName << ','
+           << cameraEnumList[i].acDriverVersion << ','
+           << cameraEnumList[i].acSensorType << ','
+           << cameraEnumList[i].acPortType << ','
+           << cameraEnumList[i].acSn << ','
            << cameraEnumList[i].uInstance;
 
         if(cameraEnumList[i].acProductSeries == string("GIGE")) {
             char camIp[16],camMask[16],camGateWay[16],etIp[16],etMask[16],etGateWay[16];
             CameraGigeGetIp(cameraEnumList + i,camIp,camMask,camGateWay,etIp,etMask,etGateWay);
-            cout  << ' ' << camIp << ' ' << camMask << ' ' << camGateWay << ' ' << etIp << ' ' << etMask << ' ' << etGateWay;
+            cout  << ',' << camIp << ',' << camMask << ',' << camGateWay << ',' << etIp << ',' << etMask << ',' << etGateWay;
         }
 
         cout << endl;
@@ -49,11 +46,28 @@ void MindVision::list()
 }
 
 void MindVision::open(string cameraName) {
-    log.open(cameraName + ".log");
-    rdbuf = cerr.rdbuf(log.rdbuf());
+    int                     cameraCounts = 100;
+    tSdkCameraDevInfo       cameraEnumList[100];
+    CameraEnumerateDevice(cameraEnumList,&cameraCounts);
 
-    auto status = CameraInitEx2(&cameraName[0],&camera);
+    tSdkCameraDevInfo* pCameraInfo = nullptr;
+    for(auto i=0;i < cameraCounts;i++) {
+        if(cameraName == cameraEnumList[i].acSn) {
+            pCameraInfo = cameraEnumList + i;
+            break;
+        }
+    }
+
+    if(pCameraInfo == nullptr) {
+        cout << "False " << endl;
+        throw runtime_error("相机初始化失败！");
+    }
+
+    auto coutbuf = cout.rdbuf(cerr.rdbuf());
+    auto status = CameraInit(pCameraInfo,-1,-1,&camera);
     cerr << "CameraInitEx2 " << status << endl;
+    cout.rdbuf(coutbuf);
+
     if(status != CAMERA_STATUS_SUCCESS) {
         cout << "False " << endl;
         throw runtime_error("相机初始化失败！");
@@ -61,6 +75,70 @@ void MindVision::open(string cameraName) {
 
     pipeName = cameraName;
     start();
+}
+
+
+void MindVision::test(string cameraName) {
+    int                     cameraCounts = 100;
+    tSdkCameraDevInfo       cameraEnumList[100];
+    CameraEnumerateDevice(cameraEnumList,&cameraCounts);
+
+    tSdkCameraDevInfo* pCameraInfo = nullptr;
+    for(auto i=0;i < cameraCounts;i++) {
+        if(cameraName == cameraEnumList[i].acSn) {
+            pCameraInfo = cameraEnumList + i;
+            break;
+        }
+    }
+
+    if(pCameraInfo == nullptr) {
+        cout << "False " << endl;
+        throw runtime_error("相机初始化失败！");
+    }
+
+    auto status = CameraInit(pCameraInfo,-1,-1,&camera);
+    cout << "CameraInitEx2 " << status << endl;
+
+    if(status != CAMERA_STATUS_SUCCESS) {
+        cout << "False " << endl;
+        throw runtime_error("相机初始化失败！");
+    }
+
+    pipeName = cameraName;
+
+    cout << "CameraGetCapability " << CameraGetCapability(camera,&capability) << endl;
+
+    rgbBufferLength = capability.sResolutionRange.iHeightMax * capability.sResolutionRange.iWidthMax * (capability.sIspCapacity.bMonoSensor ? 1 : 3);
+    rgbBuffer = new unsigned char[rgbBufferLength];
+
+    cout << "CameraPlay " << CameraPlay(camera) << endl;
+
+    if(capability.sIspCapacity.bMonoSensor) cerr << CameraSetIspOutFormat(camera,CAMERA_MEDIA_TYPE_MONO8) << " CameraSetIspOutFormat" << endl;
+    else cout << CameraSetIspOutFormat(camera,CAMERA_MEDIA_TYPE_RGB8) << " CameraSetIspOutFormat" << endl;
+
+    cout << "True " << pipeName << ' ' << endl;
+
+    while(!pipeName.empty()) {
+        tSdkFrameHead        frameHead;
+        unsigned char* rawBuffer;
+
+        auto status = CameraGetImageBuffer(camera,&frameHead,&rawBuffer,2000);
+        cout << status << " CameraGetImageBuffer" << endl;
+
+        if(status == CAMERA_STATUS_SUCCESS) {
+            cout << CameraImageProcess(camera,rawBuffer,rgbBuffer,&frameHead) << " CameraImageProcess" << endl;
+            cout << CameraReleaseImageBuffer(camera,rawBuffer) << " CameraReleaseImageBuffer" << endl;
+        }
+
+
+        stringstream ss;
+        ss << frameHead.iWidth << ' '
+           << frameHead.iHeight << ' '
+           << (frameHead.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? 1 : 3) << ' ' << endl;
+
+        cout << ss.str() << endl;
+        cout << CameraSaveImage(camera,const_cast<char*>(cameraName.c_str()),rgbBuffer,&frameHead,emSdkFileType::FILE_BMP,0) << " CameraSaveImage" << endl;
+    }
 }
 
 void MindVision::run(){
@@ -75,8 +153,8 @@ void MindVision::run(){
 
     cerr << "CameraPlay " << CameraPlay(camera) << endl;
 
-    if(capability.sIspCapacity.bMonoSensor) cerr << CameraSetIspOutFormat(camera,CAMERA_MEDIA_TYPE_MONO8) << endl;
-    else cerr << CameraSetIspOutFormat(camera,CAMERA_MEDIA_TYPE_RGB8) << endl;
+    if(capability.sIspCapacity.bMonoSensor) cerr << CameraSetIspOutFormat(camera,CAMERA_MEDIA_TYPE_MONO8) << " CameraSetIspOutFormat" << endl;
+    else cerr << CameraSetIspOutFormat(camera,CAMERA_MEDIA_TYPE_RGB8) << " CameraSetIspOutFormat" << endl;
 
     cout << "True " << pipeName << ' ' << endl;
 
@@ -96,9 +174,17 @@ void MindVision::run(){
             tSdkFrameHead        frameHead;
             unsigned char* rawBuffer;
 
-            cerr << CameraGetImageBuffer(camera,&frameHead,&rawBuffer,10000) << ' ';
-            cerr << CameraImageProcess(camera,rawBuffer,rgbBuffer,&frameHead) << ' ';
-            cerr << CameraReleaseImageBuffer(camera,rawBuffer) << endl;
+            auto status = CameraGetImageBuffer(camera,&frameHead,&rawBuffer,2000);
+            cerr << status << " CameraGetImageBuffer" << endl;
+
+            if(status == CAMERA_STATUS_SUCCESS) {
+                cerr << CameraImageProcess(camera,rawBuffer,rgbBuffer,&frameHead) << " CameraImageProcess" << endl;
+                cerr << CameraReleaseImageBuffer(camera,rawBuffer) << " CameraReleaseImageBuffer" << endl;
+            } else {
+                frameHead.iHeight = capability.sResolutionRange.iHeightMax;
+                frameHead.iWidth = capability.sResolutionRange.iWidthMax;
+                frameHead.uiMediaType = (capability.sIspCapacity.bMonoSensor ? 1 : 3);
+            }
 
             stringstream ss;
             ss << frameHead.iWidth << ' '
@@ -120,20 +206,27 @@ void MindVision::run(){
 }
 
 void MindVision::exposure() {
-    BOOL            mode;
-    int             brightness;
-    double          exposureTime;
-    int             analogGain;
-    BOOL            flicker;
-    int             frequencySel;
-    double	        expLineTime; //当前的行曝光时间，单位为us
+    BOOL            mode = 0;
+    int             brightness = 0;
+    double          exposureTime = 0;
+    int             analogGain = 0;
+    BOOL            flicker = 0;
+    int             frequencySel = 0;
+    double	        expLineTime = 0; //当前的行曝光时间，单位为us
 
-    CameraGetAeState(camera,&mode);//获得相机当前的曝光模式。
-    CameraGetAeTarget(camera,&brightness);//获得自动曝光的亮度目标值。
-    CameraGetAntiFlick(camera,&flicker);//获得自动曝光时抗频闪功能的使能状态。
-    CameraGetLightFrequency(camera,&frequencySel);//获得自动曝光时，消频闪的频率选择。
-    CameraGetAnalogGain(camera,&analogGain);//获得图像信号的模拟增益值。
-    CameraGetExposureTime(camera,&exposureTime);//获得相机的曝光时间。
+    auto ret = CameraGetAeState(camera,&mode);
+    auto status = ret;
+    cerr << ret << " CameraGetAeState" << endl;//获得相机当前的曝光模式。
+    status += ret = CameraGetAeTarget(camera,&brightness);
+    cerr << ret << " CameraGetAeTarget" << endl;//获得自动曝光的亮度目标值。
+    status += ret = CameraGetAntiFlick(camera,&flicker);
+    cerr << ret << " CameraGetAntiFlick" << endl;//获得自动曝光时抗频闪功能的使能状态。
+    status += ret = CameraGetLightFrequency(camera,&frequencySel);
+    cerr <<  ret << " CameraGetLightFrequency" << endl;//获得自动曝光时，消频闪的频率选择。
+    status += ret = CameraGetAnalogGain(camera,&analogGain);
+    cerr << ret  << " CameraGetAnalogGain" << endl;//获得图像信号的模拟增益值。
+    status += ret = CameraGetExposureTime(camera,&exposureTime);
+    cerr << ret << " CameraGetExposureTime" << endl;//获得相机的曝光时间。
 
 /*
     获得一行的曝光时间。对于CMOS传感器，其曝光
@@ -141,9 +234,10 @@ void MindVision::exposure() {
     级别连续可调。而是会按照整行来取舍。这个函数的
     作用就是返回CMOS相机曝光一行对应的时间。
 */
-    CameraGetExposureLineTime(camera, &expLineTime);
+    status += ret = CameraGetExposureLineTime(camera, &expLineTime);
+    cerr << ret << " CameraGetExposureLineTime" << endl;
 
-    cout << "True "
+    cout << (status ? "False " : "True ")
          << mode << ' '
          << capability.sExposeDesc.uiTargetMin << ' ' << capability.sExposeDesc.uiTargetMax << ' ' << brightness << ' '
          << flicker << ' '
@@ -189,11 +283,13 @@ void MindVision::white_balance() {
     BOOL mode;
     int r,g,b;
 
-    CameraGetWbMode(camera,&mode);
-    CameraGetGain(camera,&r,&g,&b);
-    CameraGetSaturation(camera,&saturation);
 
-    cout << "True "
+    auto ret = CameraGetWbMode(camera,&mode);
+    auto status = ret;
+    status += ret = CameraGetGain(camera,&r,&g,&b);
+    status += ret = CameraGetSaturation(camera,&saturation);
+
+    cout << (status ? "False " : "True ")
          << mode << ' '
          << capability.sRgbGainRange.iRGainMin << ' ' << capability.sRgbGainRange.iRGainMax << ' ' << r << ' '
          << capability.sRgbGainRange.iGGainMin << ' ' << capability.sRgbGainRange.iGGainMax << ' ' << g << ' '
@@ -268,7 +364,7 @@ void MindVision::resolutions() {
 }
 
 void MindVision::resolution() {
-    tSdkImageResolution resolution = { 0 };
+    tSdkImageResolution resolution;
     CameraGetImageResolution(camera,&resolution);
     cout << "True " << resolution.iIndex << endl;
 }
