@@ -97,15 +97,15 @@ int main(int argc, char *argv[])
                 mv.acutance(value);
             } else if(cmd == "controls") {
                 mv.controls();
-            } else if(cmd == "trigger-mode") {
+            } else if(cmd == "trigger-mode-set") {
                 int value; cin >> value;
                 mv.trigger_mode(value);
             } else if(cmd == "once-soft-trigger") {
                 mv.once_soft_trigger();
-            } else if(cmd == "flash-mode") {
+            } else if(cmd == "flash-mode-set") {
                 int value; cin >> value;
                 mv.flash_mode(value);
-            } else if(cmd == "flash-polarity") {
+            } else if(cmd == "flash-polarity-set") {
                 int value; cin >> value;
                 mv.flash_polarity(value);
             } else {

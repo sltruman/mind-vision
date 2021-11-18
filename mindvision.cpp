@@ -422,19 +422,22 @@ void MindVision::controls() {
 }
 
 void MindVision::trigger_mode(int value) {
-    CameraSetTriggerMode(camera,value);
+    cerr << CameraSetTriggerMode(camera,value) << " CameraSetTriggerMode " << value << endl;
     cout << "True " << endl;
 }
 
 void MindVision::once_soft_trigger() {
     CameraSoftTrigger(camera);
+    cout << "True " << endl;
 }
 
 void MindVision::flash_mode(int value) {
     CameraSetStrobeMode(camera,value);
+    cout << "True " << endl;
 }
 
 void MindVision::flash_polarity(int value) {
     CameraSetStrobePolarity(camera,value);
+    cout << "True " << endl;
 }
 

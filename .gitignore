@@ -1,3 +1,5 @@
+Debug/
+*.pdb
 # C++ objects and libs
 *.slo
 *.lo
