@@ -108,6 +108,20 @@ int main(int argc, char *argv[])
             } else if(cmd == "flash-polarity-set") {
                 int value; cin >> value;
                 mv.flash_polarity(value);
+            } else if(cmd == "params-reset") {
+                mv.params_reset();
+            } else if(cmd == "params-save") {
+                int value; cin >> value;
+                mv.params_save(value);
+            } else if(cmd == "params-load") {
+                int value; cin >> value;
+                mv.params_load(value);
+            } else if(cmd == "params-save-to-file") {
+                string value; cin >> value;
+                mv.params_save_to_file(value);
+            } else if(cmd == "params-load-from-file") {
+                string value; cin >> value;
+                mv.params_load_from_file(value);
             } else {
                 cout << "False " << endl;
             }

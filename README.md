@@ -90,16 +90,19 @@ $ mind-vision open 产品序列号
 
 ```bash
 $ mind-vision open 产品序列号
-> save 0  #'0|1|2|3'
+> params-reset
+'True \n'
+
+> params-save 0  #'0|1|2|3'
 'True \n' 
 
-> load 0  #'0|1|2|3'
+> params-load 0  #'0|1|2|3'
 'True \n'
 
-> save-file path/to/file #文件路径
+> params-save-to-file 'path/to/file' #文件路径
 'True \n'
 
-> load-file path/to/file #文件路径
+> params-load-from-file 'path/to/file' #文件路径
 'True \n' 
 ```
 

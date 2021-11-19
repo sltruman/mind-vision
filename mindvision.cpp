@@ -441,3 +441,29 @@ void MindVision::flash_polarity(int value) {
     cout << "True " << endl;
 }
 
+void MindVision::params_reset() {
+    cerr << CameraLoadParameter(camera,PARAMETER_TEAM_DEFAULT) << " CameraLoadParameter" << endl;
+    cout << "True " << endl;
+}
+
+void MindVision::params_save(int value) {
+    cerr << CameraSaveParameter(camera,value) << " CameraSaveParameter " << value << endl;
+    cout << "True " << endl;
+}
+
+void MindVision::params_load(int value) {
+    cerr << CameraLoadParameter(camera,value) << " CameraLoadParameter "<< value << endl;
+    cout << "True " << endl;
+}
+
+void MindVision::params_save_to_file(string filename) {
+    cerr << CameraSaveParameterToFile(camera,const_cast<char*>(filename.c_str())) << " CameraSaveParameterToFile " << filename << endl;
+    cout << "True " << endl;
+}
+
+void MindVision::params_load_from_file(string filename) {
+    cerr << CameraReadParameterFromFile(camera,const_cast<char*>(filename.c_str())) << " CameraReadParameterFromFile " << filename<< endl;
+    cout << "True " << endl;
+}
+
+

@@ -63,6 +63,12 @@ public:
     void flash_mode(int value);
     void flash_polarity(int value);
 
+    void params_reset();
+    void params_save(int value);
+    void params_load(int value);
+    void params_save_to_file(string filename);
+    void params_load_from_file(string filename);
+
 private:
     ofstream log;
     streambuf* rdbuf;
