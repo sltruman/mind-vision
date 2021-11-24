@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
             } else if(cmd == "b-set") {
                 int value; cin >> value;
                 mv.b(value);
-            } else if(cmd == "saturation-set") {
+                } else if(cmd == "saturation-set") {
                 int value; cin >> value;
                 mv.saturation(value);
             } else if(cmd == "lookup-tables") {
@@ -122,8 +122,15 @@ int main(int argc, char *argv[])
             } else if(cmd == "params-load-from-file") {
                 string value; cin >> value;
                 mv.params_load_from_file(value);
-            } else {
-                cout << "False " << endl;
+            } else if(cmd == "snapshot-start") {
+                string dir;
+                int resolution,format,period;
+                cin >> dir >> resolution >> format >> period;
+                mv.snapshot_start(dir,resolution,format,period);
+            } else if(cmd == "snapshot-state") {
+                mv.snapshot_state();
+            } else if(cmd == "snapshot-stop") {
+               mv.snapshot_stop();
             }
         } while(cmd != "exit");
 

@@ -73,7 +73,29 @@ void MindVision::open(string cameraName) {
         throw runtime_error("相机初始化失败！");
     }
 
+    status = CameraGetCapability(camera,&capability);
+    cerr << status << " CameraGetCapability" << endl;
+    if(status != CAMERA_STATUS_SUCCESS) {
+        cout << "False " << endl;
+        throw runtime_error("相机初始化失败！");
+    }
+
+    cerr << CameraPlay(camera) << " CameraPlay"  << endl;
+
+    if(capability.sIspCapacity.bMonoSensor)
+        status = CameraSetIspOutFormat(camera,CAMERA_MEDIA_TYPE_MONO8);
+    else
+        status = CameraSetIspOutFormat(camera,CAMERA_MEDIA_TYPE_RGB8);
+
+    cerr << status << " CameraSetIspOutFormat" << endl;
+
+    if(status != CAMERA_STATUS_SUCCESS) {
+        cout << "False " << endl;
+        throw runtime_error("相机初始化失败！");
+    }
+
     pipeName = cameraName;
+
     start();
 }
 
@@ -146,15 +168,8 @@ void MindVision::run(){
     QLocalServer server;
     server.listen(pipeName.c_str());
 
-    cerr << "CameraGetCapability " << CameraGetCapability(camera,&capability) << endl;
-
     rgbBufferLength = capability.sResolutionRange.iHeightMax * capability.sResolutionRange.iWidthMax * (capability.sIspCapacity.bMonoSensor ? 1 : 3);
     rgbBuffer = new unsigned char[rgbBufferLength];
-
-    cerr << "CameraPlay " << CameraPlay(camera) << endl;
-
-    if(capability.sIspCapacity.bMonoSensor) cerr << CameraSetIspOutFormat(camera,CAMERA_MEDIA_TYPE_MONO8) << " CameraSetIspOutFormat" << endl;
-    else cerr << CameraSetIspOutFormat(camera,CAMERA_MEDIA_TYPE_RGB8) << " CameraSetIspOutFormat" << endl;
 
     cout << "True " << pipeName << ' ' << endl;
 
@@ -170,8 +185,7 @@ void MindVision::run(){
                 continue;
             }
 
-            auto c = sock->readLine();
-            tSdkFrameHead        frameHead;
+            tSdkFrameHead  frameHead;
             unsigned char* rawBuffer;
 
             auto status = CameraGetImageBuffer(camera,&frameHead,&rawBuffer,2000);
@@ -193,6 +207,7 @@ void MindVision::run(){
 
             cerr << ss.str() << endl;
 
+            auto c = sock->readLine();
             sock->write(ss.str().data(),ss.str().size());
 
             rgbBufferLength = frameHead.iHeight * frameHead.iWidth * (frameHead.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? 1 : 3);
@@ -282,7 +297,6 @@ void MindVision::white_balance() {
     int saturation;
     BOOL mode;
     int r,g,b;
-
 
     auto ret = CameraGetWbMode(camera,&mode);
     auto status = ret;
@@ -466,4 +480,36 @@ void MindVision::params_load_from_file(string filename) {
     cout << "True " << endl;
 }
 
+void MindVision::snapshot_resolution() {
+    tSdkImageResolution resolution;
+    CameraGetResolutionForSnap(camera,&resolution);
+    cout << "True " << resolution.iIndex << endl;
+}
 
+void MindVision::snapshot_resolution(int index) {
+    CameraSetResolutionForSnap(camera,&capability.pImageSizeDesc[index]);
+    cout << "True " << endl;
+}
+
+void MindVision::snapshot_start(string dir,int resolution,int format,int period) {
+    st.dir = dir;
+    st.format = format;
+    st.camera = camera;
+    st.capability = capability;
+    st.resolution = resolution;
+    st.period = period;
+
+    st.start();
+    cout << "True " << endl;
+}
+
+void MindVision::snapshot_state() {
+    cout << "True " << st.isRunning() << " " << endl;
+}
+
+void MindVision::snapshot_stop() {
+    st.interrupt = true;
+    st.terminate();
+    st.wait();
+    cout << "True " << endl;
+}

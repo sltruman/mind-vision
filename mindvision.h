@@ -5,6 +5,8 @@
 #include <windows.h>
 #endif
 
+#include "snapshotthread.h"
+
 #include <CameraApi.h>
 #include <CameraStatus.h>
 #include <QLocalServer>
@@ -52,6 +54,7 @@ public:
     void resolution();
     void resolution(int index);
 
+
     void isp();
     void horizontal_mirror(int value);
     void vertical_mirror(int value);
@@ -66,8 +69,15 @@ public:
     void params_reset();
     void params_save(int value);
     void params_load(int value);
-    void params_save_to_file(string filename);
-    void params_load_from_file(string filename);
+    void params_save_to_file(string filepath);
+    void params_load_from_file(string filepath);
+
+    void snapshot_resolution();
+    void snapshot_resolution(int index);
+
+    void snapshot_start(string dir,int resolution,int format,int interval);
+    void snapshot_state();
+    void snapshot_stop();
 
 private:
     ofstream log;
@@ -79,6 +89,8 @@ private:
 
     unsigned char* rgbBuffer;
     int rgbBufferLength;
+
+    SnapshotThread st;
 };
 
 #endif // MINDVISION_H

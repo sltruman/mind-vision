@@ -10,7 +10,8 @@ win32:INCLUDEPATH += "C:\Program Files\MindVision\Demo\VC++\Include"
 
 SOURCES += \
         main.cpp \
-        mindvision.cpp
+        mindvision.cpp \
+        snapshotthread.cpp
 
 
 unix:LIBS += -lMVSDK
@@ -22,4 +23,5 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 HEADERS += \
-    mindvision.h
+    mindvision.h \
+    snapshotthread.h
