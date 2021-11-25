@@ -2,7 +2,8 @@
 #define MINDVISION_H
 
 #ifdef WIN32
-#include <windows.h>
+#include <Windows.h>
+#undef min
 #endif
 
 #include "snapshotthread.h"

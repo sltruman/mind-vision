@@ -159,7 +159,7 @@ void MindVision::test(string cameraName) {
            << (frameHead.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? 1 : 3) << ' ' << endl;
 
         cout << ss.str() << endl;
-        cout << CameraSaveImage(camera,const_cast<char*>(cameraName.c_str()),rgbBuffer,&frameHead,emSdkFileType::FILE_BMP,0) << " CameraSaveImage" << endl;
+        cout << CameraSaveImage(camera,const_cast<char*>(cameraName.c_str()),rgbBuffer,&frameHead,emSdkFileType::FILE_JPG,100) << " CameraSaveImage" << endl;
     }
 }
 
@@ -205,13 +205,12 @@ void MindVision::run(){
                << frameHead.iHeight << ' '
                << (frameHead.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? 1 : 3) << ' ' << endl;
 
-            cerr << ss.str() << endl;
-
-            auto c = sock->readLine();
-            sock->write(ss.str().data(),ss.str().size());
-
+            cerr << ss.str();
             rgbBufferLength = frameHead.iHeight * frameHead.iWidth * (frameHead.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? 1 : 3);
-            sock->write((const char*)rgbBuffer,rgbBufferLength);
+            cerr << sock->readLine().toStdString();
+            cerr << sock->write(ss.str().data(),ss.str().size()) << " write" << endl;
+            cerr << sock->readLine().toStdString();
+            cerr << sock->write((const char*)rgbBuffer,rgbBufferLength) << " write" << endl;
         }
 
         sock->disconnectFromServer();

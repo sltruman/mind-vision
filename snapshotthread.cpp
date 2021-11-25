@@ -1,5 +1,6 @@
 #include "snapshotthread.h"
 
+
 SnapshotThread::SnapshotThread()
 {
 
@@ -7,15 +8,14 @@ SnapshotThread::SnapshotThread()
 
 void SnapshotThread::run() {
 
-    auto status = CameraSetResolutionForSnap(camera,&capability.pImageSizeDesc[resolution]);
-    cerr << status << "CameraSetResolutionForSnap" << endl;
+//    auto status = CameraSetResolutionForSnap(camera,&capability.pImageSizeDesc[resolution]);
+//    cerr << status << " CameraSetResolutionForSnap" << endl;
 ONCE:
     tSdkFrameHead	frameHead;
     BYTE			*pbyBuffer;
 
-    //CameraSnapToBuffer抓拍一张图像保存到buffer中
-    status = CameraSnapToBuffer(camera,&frameHead,&pbyBuffer,2000);
-    cerr << status << " CameraSnapToBuffer" << endl;
+    auto status = CameraSnapToBuffer(camera,&frameHead,&pbyBuffer,2000);
+    cerr << status << " CameraSnapToBuffer " << frameHead.uiMediaType << " " << frameHead.iWidth << " " << frameHead.iHeight << endl;
 
     if(status != CAMERA_STATUS_SUCCESS) {
         frameHead.iHeight = capability.sResolutionRange.iHeightMax;
@@ -23,10 +23,10 @@ ONCE:
         frameHead.uiMediaType = (capability.sIspCapacity.bMonoSensor ? 1 : 3);
     }
 
-    auto time = QDateTime::currentDateTime().toString("yyyyMMddhhmmsszzz");
-    auto filename = this->dir + "/mindvision" + time.toStdString();
+    stringstream filename;
+    filename << this->dir << "/mind-vision-" << std::time(0);
 
-    cerr << CameraSaveImage(camera, const_cast<char*>(filename.c_str()), pbyBuffer, &frameHead, format, 100) << " CameraSaveImage " << filename << endl;
+    cerr << CameraSaveImage(camera, const_cast<char*>(filename.str().c_str()), pbyBuffer, &frameHead, format, 100) << " CameraSaveImage " << filename.str() << " " << format << endl;
     cerr << CameraReleaseImageBuffer(camera, pbyBuffer) << " CameraReleaseImageBuffer" << endl;
 
     if(period == -1) return;

@@ -15,7 +15,7 @@ SOURCES += \
 
 
 unix:LIBS += -lMVSDK
-win32:LIBS += -L"C:\Program Files\MindVision\SDK" -lMVCAMSDK
+win32:LIBS += -L"C:\Program Files\MindVision\SDK\X64" -lMVCAMSDK_X64
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
