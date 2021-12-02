@@ -41,20 +41,27 @@ public:
 
     void white_balance();
     void white_balance_mode(int index);
+    void color_temrature(int index);
     void once_white_balance();
-    void r(int value);
-    void g(int value);
-    void b(int value);
+    void rgb(int r,int g,int b);
     void saturation(int value);
+    void monochrome(int enable);
+    void inverse(int enable);
+    void algorithm(int index);
 
-    void lookup_tables();
+    void lookup_table_mode();
+    void lookup_table_mode(int index);
+    void lookup_tables_for_dynamic();
     void gamma(int value);
     void contrast_ratio(int value);
+    void lookup_tables_for_preset();
+    void lookup_table_preset(int index);
+    void lookup_tables_for_custom(int index);
+
 
     void resolutions();
     void resolution();
     void resolution(int index);
-
 
     void isp();
     void horizontal_mirror(int value);
@@ -80,6 +87,7 @@ public:
     void snapshot_state();
     void snapshot_stop();
 
+    void rename(string name);
 private:
     ofstream log;
     streambuf* rdbuf;

@@ -3,7 +3,7 @@
 
 MindVision::MindVision() : camera(0)
 {
-    cerr << "CameraSdkInit " << CameraSdkInit(1) << endl;    //sdk初始化  0 English 1中文
+    cerr << CameraSdkInit(1) << " CameraSdkInit" << endl;    //sdk初始化  0 English 1中文
 }
 
 MindVision::~MindVision()
@@ -34,7 +34,10 @@ void MindVision::list()
            << cameraEnumList[i].acSn << ','
            << cameraEnumList[i].uInstance;
 
-        if(cameraEnumList[i].acProductSeries == string("GIGE")) {
+        string series(cameraEnumList[i].acProductSeries);
+        transform(series.begin(),series.end(),series.begin(),toupper);
+
+        if(series.find("GIGE") != -1) {
             char camIp[16],camMask[16],camGateWay[16],etIp[16],etMask[16],etGateWay[16];
             CameraGigeGetIp(cameraEnumList + i,camIp,camMask,camGateWay,etIp,etMask,etGateWay);
             cout  << ',' << camIp << ',' << camMask << ',' << camGateWay << ',' << etIp << ',' << etMask << ',' << etGateWay;
@@ -192,8 +195,8 @@ void MindVision::run(){
             cerr << status << " CameraGetImageBuffer" << endl;
 
             if(status == CAMERA_STATUS_SUCCESS) {
-                cerr << CameraImageProcess(camera,rawBuffer,rgbBuffer,&frameHead) << " CameraImageProcess" << endl;
-                cerr << CameraReleaseImageBuffer(camera,rawBuffer) << " CameraReleaseImageBuffer" << endl;
+                CameraImageProcess(camera,rawBuffer,rgbBuffer,&frameHead);
+                CameraReleaseImageBuffer(camera,rawBuffer);
             } else {
                 frameHead.iHeight = capability.sResolutionRange.iHeightMax;
                 frameHead.iWidth = capability.sResolutionRange.iWidthMax;
@@ -205,12 +208,11 @@ void MindVision::run(){
                << frameHead.iHeight << ' '
                << (frameHead.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? 1 : 3) << ' ' << endl;
 
-            cerr << ss.str();
             rgbBufferLength = frameHead.iHeight * frameHead.iWidth * (frameHead.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? 1 : 3);
-            cerr << sock->readLine().toStdString();
-            cerr << sock->write(ss.str().data(),ss.str().size()) << " write" << endl;
-            cerr << sock->readLine().toStdString();
-            cerr << sock->write((const char*)rgbBuffer,rgbBufferLength) << " write" << endl;
+            sock->readLine().toStdString();
+            sock->write(ss.str().data(),ss.str().size());
+            sock->readLine().toStdString();
+            sock->write((const char*)rgbBuffer,rgbBufferLength);
         }
 
         sock->disconnectFromServer();
@@ -266,7 +268,7 @@ void MindVision::exposure_mode(int value) {
 }
 
 void MindVision::brightness(int value) {
-    CameraSetAeTarget(camera,value);
+    cerr << CameraSetAeTarget(camera,value) << " CameraSetAeTarget" << endl;
     cout << "True " << endl;
 }
 
@@ -293,69 +295,170 @@ void MindVision::frequency(int value) {
 }
 
 void MindVision::white_balance() {
-    int saturation;
-    BOOL mode;
-    int r,g,b;
+    int saturation=0;
+    BOOL mode= -1;
+    int r=0,g=0,b=0;
+    int algorithm = -1;
+    BOOL monochrome = 0,inverse = 0;
+    int color_temrature = -1;
+    int color_temrature_mode;
 
-    auto ret = CameraGetWbMode(camera,&mode);
-    auto status = ret;
-    status += ret = CameraGetGain(camera,&r,&g,&b);
-    status += ret = CameraGetSaturation(camera,&saturation);
+    cerr << CameraGetWbMode(camera,&mode) << " CameraGetWbMode" << endl;
+    cerr << CameraGetGain(camera,&r,&g,&b) << " CameraGetGain" << endl;
+    cerr << CameraGetSaturation(camera,&saturation) << " CameraGetSaturation" << endl;
+    cerr << CameraGetMonochrome(camera,&monochrome) << " CameraGetMonochrome" << endl;
+    cerr << CameraGetInverse(camera,&inverse) << " CameraGetInverse" << endl;
+    cerr << CameraGetBayerDecAlgorithm(camera,ISP_PROCESSSOR_PC,&algorithm) << " CameraGetBayerDecAlgorithm" << endl;
+    cerr << CameraGetClrTempMode(camera,&color_temrature_mode) << " CameraGetClrTempMode " << color_temrature_mode << endl;
+    switch(color_temrature_mode) {
+    case CT_MODE_AUTO:
+        color_temrature = 0;
+        break;
+    case CT_MODE_PRESET:
+        cerr << CameraGetPresetClrTemp(camera,&color_temrature) << " CameraGetPresetClrTemp " << color_temrature << endl;
+        color_temrature += 1;
+        break;
+    case CT_MODE_USER_DEF:
+        color_temrature = 4;
+        break;
+    }
 
-    cout << (status ? "False " : "True ")
+    cout << "True "
          << mode << ' '
          << capability.sRgbGainRange.iRGainMin << ' ' << capability.sRgbGainRange.iRGainMax << ' ' << r << ' '
          << capability.sRgbGainRange.iGGainMin << ' ' << capability.sRgbGainRange.iGGainMax << ' ' << g << ' '
          << capability.sRgbGainRange.iBGainMin << ' ' << capability.sRgbGainRange.iBGainMax << ' ' << b << ' '
-         << capability.sSaturationRange.iMin << ' ' << capability.sSaturationRange.iMax << ' ' << saturation << ' ' << endl;
+         << capability.sSaturationRange.iMin << ' ' << capability.sSaturationRange.iMax << ' ' << saturation << ' '
+         << monochrome << ' ' << inverse << ' ' << algorithm << ' ' << color_temrature << ' '
+         << endl;
 }
 
-void MindVision::white_balance_mode(int index){
-    CameraSetWbMode(camera,index);
+void MindVision::white_balance_mode(int index) {
+    cerr << CameraSetWbMode(camera,index) << " CameraSetWbMode" << endl;
     cout << "True " << endl;
 }
 
-void MindVision::once_white_balance(){
-    CameraSetOnceWB(camera);
+void MindVision::color_temrature(int index) {
+    switch(index) {
+    case 0:
+        cerr << CameraSetClrTempMode(camera,CT_MODE_AUTO) << " CameraSetClrTempMode " << CT_MODE_AUTO << endl;
+        cerr << CameraSetOnceWB(camera) << " CameraSetOnceWB" << endl;
+        break;
+    case 1:
+    case 2:
+    case 3:
+        cerr << CameraSetClrTempMode(camera,CT_MODE_PRESET) << " CameraSetClrTempMode " << CT_MODE_PRESET << endl;
+        cerr << CameraSetPresetClrTemp(camera,index - 1) << " CameraSetPresetClrTemp " << index - 1 << endl;
+        break;
+    case 4:
+        cerr << CameraSetClrTempMode(camera,CT_MODE_USER_DEF) << " CameraSetClrTempMode " << CT_MODE_USER_DEF << endl;
+        break;
+    }
+
     cout << "True " << endl;
 }
 
-void MindVision::r(int value){
-    int r,g,b;
-    CameraGetGain(camera,&r,&g,&b);
-    CameraSetGain(camera,value,g,b);
+void MindVision::once_white_balance() {
+    cerr << CameraSetOnceWB(camera) << " CameraSetOnceWB" << endl;
     cout << "True " << endl;
 }
 
-void MindVision::g(int value){
-    int r,g,b;
-    CameraGetGain(camera,&r,&g,&b);
-    CameraSetGain(camera,r,value,b);
-    cout << "True " << endl;
-}
-
-void MindVision::b(int value){
-    int r,g,b;
-    CameraGetGain(camera,&r,&g,&b);
-    CameraSetGain(camera,r,g,value);
+void MindVision::rgb(int r,int g,int b) {
+    cerr << CameraSetGain(camera,r,g,b) << " CameraSetGain " << r << ' ' << g << ' ' << b << endl;
     cout << "True " << endl;
 }
 
 void MindVision::saturation(int value) {
-    CameraSetSaturation(camera,value);
+    cerr << CameraSetSaturation(camera,value) << " CameraSetSaturation " << value << endl;
     cout << "True " << endl;
 }
 
-void MindVision::lookup_tables() {
+void MindVision::monochrome(int enable) {
+    cerr << CameraSetMonochrome(camera,enable) << " CameraSetMonochrome" << endl;
+    cout << "True " << endl;
+}
+
+void MindVision::inverse(int enable) {
+    cerr << CameraSetInverse(camera,enable) << " CameraSetInverse" << endl;
+    cout << "True " << endl;
+}
+
+void MindVision::algorithm(int index) {
+    cerr << CameraSetBayerDecAlgorithm(camera,ISP_PROCESSSOR_PC,index) << " CameraSetBayerDecAlgorithm" << endl;
+    cout << "True " << endl;
+}
+
+void MindVision::lookup_table_mode() {
+    int mode = -1;
+    cerr << CameraGetLutMode(camera,&mode) << " CameraGetLutMode" << endl;
+    cout << "True "
+         << mode << ' ' << endl;
+}
+
+void MindVision::lookup_table_mode(int index) {
+    cerr << CameraSetLutMode(camera,index) << " CameraSetLutMode" << endl;
+    cout << "True " << endl;
+}
+
+void MindVision::lookup_tables_for_dynamic() {
     int                 gamma=0;
     int                 contrast=0;
+    unsigned short r[4096];
 
-    CameraGetGamma(camera,&gamma);
-    CameraGetContrast(camera,&contrast);
+    cerr << CameraGetGamma(camera,&gamma) << " CameraGetGamma" << endl;
+    cerr << CameraGetContrast(camera,&contrast) << " CameraGetContrast" << endl;
+    cerr << CameraGetCurrentLut(camera,LUT_CHANNEL_ALL,r) << endl;
+
+    stringstream ss;
+    for(auto i=0;i < 4096;i++)
+        ss << r[i] << ',';
+    ss.seekp(-1,ios::end);
+    ss << " ";
 
     cout << "True "
          << capability.sGammaRange.iMin << ' ' << capability.sGammaRange.iMax << ' ' << gamma << ' '
-         << capability.sContrastRange.iMin << ' ' << capability.sContrastRange.iMax << ' ' << contrast << ' ' << endl;
+         << capability.sContrastRange.iMin << ' ' << capability.sContrastRange.iMax << ' ' << contrast << ' '
+         << ss.str()
+         << endl;
+}
+
+void MindVision::lookup_tables_for_preset() {
+    int preset = -1;
+    unsigned short r[4096];
+    cerr << CameraGetLutPresetSel(camera,&preset) << " CameraGetLutPresetSel" << endl;
+    cerr << CameraGetCurrentLut(camera,LUT_CHANNEL_ALL,r) << " CameraGetCurrentLut" << endl;
+
+    stringstream ss;
+    for(auto i=0;i < 4096;i++)
+        ss << r[i] << ',';
+    ss.seekp(-1,ios::end);
+    ss << " ";
+
+    cout << "True "
+         << preset << ' '
+         << ss.str()
+         << endl;
+}
+
+void MindVision::lookup_table_preset(int index) {
+    cerr << CameraSelectLutPreset(camera,index) << " CameraSelectLutPreset" << endl;
+    cout << "True "
+         << endl;
+}
+
+void MindVision::lookup_tables_for_custom(int index) {
+    USHORT r[4096];
+    cerr << CameraGetCustomLut(camera,index,r) << endl;
+
+    stringstream ss;
+    for(auto i=0;i < 4096;i++)
+        ss << r[i] << ',';
+    ss.seekp(-1,ios::end);
+    ss << " ";
+
+    cout << "True "
+         << ss.str()
+         << endl;
 }
 
 void MindVision::gamma(int value) {
@@ -510,5 +613,10 @@ void MindVision::snapshot_stop() {
     st.interrupt = true;
     st.terminate();
     st.wait();
+    cout << "True " << endl;
+}
+
+void MindVision::rename(string name) {
+    cerr << CameraSetFriendlyName(camera,const_cast<char*>(name.c_str())) << " CameraSetFriendlyName" << endl;
     cout << "True " << endl;
 }
