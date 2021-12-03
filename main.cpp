@@ -79,18 +79,28 @@ int main(int argc, char *argv[])
                 int index; cin >> index; mv.lookup_tables_for_custom(index);
             } else if(cmd == "resolutions") {
                 mv.resolutions();
-            } else if(cmd == "resolution-get") {
-                mv.resolution();
             } else if(cmd == "resolution-set") {
                 int value; cin >> value; mv.resolution(value);
-            } else if(cmd == "isp") {
-                mv.isp();
+            } else if(cmd == "transform") {
+                mv.transform();
             } else if(cmd == "horizontal-mirror-set") {
                 int value; cin >> value; mv.horizontal_mirror(value);
             } else if(cmd == "vertical-mirror-set") {
                 int value; cin >> value; mv.vertical_mirror(value);
             } else if(cmd == "acutance-set") {
                 int value; cin >> value; mv.acutance(value);
+            } else if(cmd == "noise-set") {
+                int enable; cin >> enable; mv.noise(enable);
+            } else if(cmd == "noise3d-set") {
+                int enable,count; cin >> enable >> count; mv.noise3d(enable,count);
+            } else if(cmd == "rotate-set") {
+                int value; cin >> value; mv.rotate(value);
+            } else if(cmd == "video") {
+                mv.video();
+            } else if(cmd == "frame-rate-speed-set") {
+                int index; cin >> index; mv.frame_rate_speed(index);
+            } else if(cmd == "frame-rate-limit-set") {
+                int value; cin >> value; mv.frame_rate_limit(value);
             } else if(cmd == "controls") {
                 mv.controls();
             } else if(cmd == "trigger-mode-set") {
@@ -119,6 +129,12 @@ int main(int argc, char *argv[])
                 mv.snapshot_stop();
             } else if(cmd == "rename") {
                 string name; cin >> name; mv.rename(name);
+            } else if(cmd == "play") {
+                mv.play();
+            } else if(cmd == "pause") {
+                mv.pause();
+            } else if(cmd == "stop") {
+                mv.stop();
             }
         } while(cmd != "exit");
     } catch(exception& e) {}

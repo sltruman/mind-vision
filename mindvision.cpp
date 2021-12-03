@@ -35,7 +35,7 @@ void MindVision::list()
            << cameraEnumList[i].uInstance;
 
         string series(cameraEnumList[i].acProductSeries);
-        transform(series.begin(),series.end(),series.begin(),toupper);
+        std::transform(series.begin(),series.end(),series.begin(),toupper);
 
         if(series.find("GIGE") != -1) {
             char camIp[16],camMask[16],camGateWay[16],etIp[16],etMask[16],etGateWay[16];
@@ -83,12 +83,8 @@ void MindVision::open(string cameraName) {
         throw runtime_error("相机初始化失败！");
     }
 
-    cerr << CameraPlay(camera) << " CameraPlay"  << endl;
-
-    if(capability.sIspCapacity.bMonoSensor)
-        status = CameraSetIspOutFormat(camera,CAMERA_MEDIA_TYPE_MONO8);
-    else
-        status = CameraSetIspOutFormat(camera,CAMERA_MEDIA_TYPE_RGB8);
+    if(capability.sIspCapacity.bMonoSensor) status = CameraSetIspOutFormat(camera,CAMERA_MEDIA_TYPE_MONO8);
+    else status = CameraSetIspOutFormat(camera,CAMERA_MEDIA_TYPE_RGB8);
 
     cerr << status << " CameraSetIspOutFormat" << endl;
 
@@ -191,7 +187,7 @@ void MindVision::run(){
             tSdkFrameHead  frameHead;
             unsigned char* rawBuffer;
 
-            auto status = CameraGetImageBuffer(camera,&frameHead,&rawBuffer,2000);
+            auto status = CameraGetImageBufferPriority(camera,&frameHead,&rawBuffer,2000,CAMERA_GET_IMAGE_PRIORITY_NEWEST);
             cerr << status << " CameraGetImageBuffer" << endl;
 
             if(status == CAMERA_STATUS_SUCCESS) {
@@ -209,6 +205,7 @@ void MindVision::run(){
                << (frameHead.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? 1 : 3) << ' ' << endl;
 
             rgbBufferLength = frameHead.iHeight * frameHead.iWidth * (frameHead.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? 1 : 3);
+
             sock->readLine().toStdString();
             sock->write(ss.str().data(),ss.str().size());
             sock->readLine().toStdString();
@@ -453,8 +450,7 @@ void MindVision::lookup_tables_for_custom(int index) {
     stringstream ss;
     for(auto i=0;i < 4096;i++)
         ss << r[i] << ',';
-    ss.seekp(-1,ios::end);
-    ss << " ";
+    ss.seekp(-1,ios::end); ss << " ";
 
     cout << "True "
          << ss.str()
@@ -471,29 +467,11 @@ void MindVision::contrast_ratio(int value) {
     cout << "True " << endl;
 }
 
-void MindVision::resolutions() {
-    stringstream ss;
-    for(auto i=0;i < capability.iImageSizeDesc;i++) {
-        ss << capability.pImageSizeDesc[i].acDescription << ' ' << endl;
-    }
-    cout << ss.str();
-}
-
-void MindVision::resolution() {
-    tSdkImageResolution resolution;
-    CameraGetImageResolution(camera,&resolution);
-    cout << "True " << resolution.iIndex << endl;
-}
-
-void MindVision::resolution(int index) {
-    CameraSetImageResolution(camera,&capability.pImageSizeDesc[index]);
-    cout << "True " << endl;
-}
-
-void MindVision::isp() {
+void MindVision::transform() {
     BOOL        m_bHflip=FALSE;
     BOOL        m_bVflip=FALSE;
-    int         m_Sharpness=0;
+    int         m_Sharpness=0,noise = 0,noise3D = 0,count = 0,weight =0,rotate  = 0;
+    float weights ;
 
     //获得图像的镜像状态。
     CameraGetMirror(camera, MIRROR_DIRECTION_HORIZONTAL, &m_bHflip);
@@ -501,10 +479,16 @@ void MindVision::isp() {
 
     //获取当前锐化设定值。
     CameraGetSharpness(camera, &m_Sharpness);
+    CameraGetNoiseFilterState(camera,&noise );
+    CameraGetDenoise3DParams(camera,&noise3D,&count,&weight,&weights);
+    CameraGetRotate(camera,&rotate);
 
     cout << "True "
          << m_bHflip << ' ' << m_bVflip << ' '
-         << capability.sSharpnessRange.iMin << ' ' <<  capability.sSharpnessRange.iMax << ' ' << m_Sharpness << ' ' << endl;
+         << capability.sSharpnessRange.iMin << ' ' <<  capability.sSharpnessRange.iMax << ' ' << m_Sharpness << ' '
+         << noise << ' ' << noise3D << ' ' << count << ' '
+         << rotate << ' '
+         << endl;
 }
 
 void MindVision::horizontal_mirror(int value) {
@@ -520,6 +504,67 @@ void MindVision::vertical_mirror(int value) {
 void MindVision::acutance(int value) {
     CameraSetSharpness(camera,value);
     cout << "True " << endl;
+}
+
+void MindVision::noise(int enable) {
+    CameraSetNoiseFilter(camera,enable);
+    cout << "True " << endl;
+}
+
+void MindVision::noise3d(int enable,int value) {
+    CameraSetDenoise3DParams(camera,enable,value,nullptr);
+    cout << "True " << endl;
+}
+
+void MindVision::rotate(int value) {
+    CameraSetRotate(camera,value);
+    cout << "True " << endl;
+}
+
+void MindVision::video() {
+    int speed=0,hz=0;
+    CameraGetFrameSpeed(camera,&speed);
+    CameraGetFrameRate(camera,&hz);
+    cout << "True "
+         << speed << ' '
+         << hz << ' '
+         << endl;
+}
+
+void MindVision::frame_rate_speed(int index) {
+    CameraSetFrameSpeed(camera,index);
+    cout << "True " << endl;
+}
+
+void MindVision::frame_rate_limit(int value) {
+    CameraSetFrameRate(camera,value);
+    cout << "True " << endl;
+}
+
+void MindVision::resolutions() {
+    tSdkImageResolution resolution;
+    CameraGetImageResolution(camera,&resolution);
+
+    stringstream ss;
+    for(auto i=0;i < capability.iImageSizeDesc;i++)
+        ss << capability.pImageSizeDesc[i].acDescription << ',';
+    ss.seekp(-1,ios::end); ss << " ";
+
+    cout << "True" << ' '
+         << (resolution.iIndex != 0xFF ? 0 : 1) << ' '
+         << ss.str()
+         << resolution.iIndex << ' '
+         << endl;
+}
+
+void MindVision::resolution(int index) {
+    CameraSetImageResolution(camera,&capability.pImageSizeDesc[index]);
+    cout << "True " << endl;
+}
+
+void MindVision::io() {
+    int state;
+    CameraGetIOState(camera,0,);
 }
 
 void MindVision::controls() {
@@ -620,3 +665,20 @@ void MindVision::rename(string name) {
     cerr << CameraSetFriendlyName(camera,const_cast<char*>(name.c_str())) << " CameraSetFriendlyName" << endl;
     cout << "True " << endl;
 }
+
+void MindVision::play() {
+    cerr << CameraPlay(camera) << " CameraPlay"  << endl;
+    cout << "True " << endl;
+}
+
+void MindVision::pause() {
+    cerr << CameraPause(camera) << " CameraPause"  << endl;
+    cout << "True " << endl;
+}
+
+void MindVision::stop() {
+    cerr << CameraStop(camera) << " CameraStop"  << endl;
+    cout << "True " << endl;
+}
+
+

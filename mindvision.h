@@ -31,6 +31,7 @@ public:
     void stop();
     void run() override;
 
+    //曝光控制
     void exposure();
     void exposure_mode(int value);
     void brightness(int value);
@@ -39,6 +40,7 @@ public:
     void exposure_time(int value);
     void frequency(int value);
 
+    //颜色调整
     void white_balance();
     void white_balance_mode(int index);
     void color_temrature(int index);
@@ -49,6 +51,7 @@ public:
     void inverse(int enable);
     void algorithm(int index);
 
+    //查表变换
     void lookup_table_mode();
     void lookup_table_mode(int index);
     void lookup_tables_for_dynamic();
@@ -58,15 +61,27 @@ public:
     void lookup_table_preset(int index);
     void lookup_tables_for_custom(int index);
 
-
-    void resolutions();
-    void resolution();
-    void resolution(int index);
-
-    void isp();
+    //图形变换
+    void transform();
     void horizontal_mirror(int value);
     void vertical_mirror(int value);
     void acutance(int value);
+    void noise(int enable);
+    void noise3d(int enable,int value);
+    void rotate(int value);
+
+    //视频参数
+    void video();
+    void frame_rate_speed(int index);
+    void frame_rate_limit(int value);
+
+    //分辨率
+    void resolutions();
+    void resolution(int index);
+
+    //IO
+    void io();
+
 
     void controls();
     void trigger_mode(int value);
@@ -88,6 +103,8 @@ public:
     void snapshot_stop();
 
     void rename(string name);
+    void play();
+    void pause();
 private:
     ofstream log;
     streambuf* rdbuf;
