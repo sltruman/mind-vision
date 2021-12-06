@@ -101,16 +101,36 @@ int main(int argc, char *argv[])
                 int index; cin >> index; mv.frame_rate_speed(index);
             } else if(cmd == "frame-rate-limit-set") {
                 int value; cin >> value; mv.frame_rate_limit(value);
+            } else if(cmd == "io") {
+                mv.io();
+            } else if(cmd == "io-mode-set") {
+                string type; int index,value; cin >> type >> index >> value; mv.io_mode(type,index,value);
+            } else if(cmd == "io-state-set") {
+                string type; int index,value; cin >> type >> index >> value; mv.io_state(type,index,value);
             } else if(cmd == "controls") {
                 mv.controls();
             } else if(cmd == "trigger-mode-set") {
                 int value; cin >> value; mv.trigger_mode(value);
             } else if(cmd == "once-soft-trigger") {
                 mv.once_soft_trigger();
+            } else if(cmd == "trigger-frames-set") {
+                int value; cin >> value; mv.trigger_frames(value);
+            } else if(cmd == "trigger-delay-set") {
+                int value; cin >> value; mv.trigger_delay(value);
+            } else if(cmd == "trigger-interval-set") {
+                int value; cin >> value; mv.trigger_interval(value);
+            }else if(cmd == "outside-trigger-mode-set") {
+                int value; cin >> value; mv.outside_trigger_mode(value);
+            }  else if(cmd == "outside-trigger-debounce-set") {
+                int value; cin >> value; mv.outside_trigger_debounce(value);
             } else if(cmd == "flash-mode-set") {
                 int value; cin >> value; mv.flash_mode(value);
             } else if(cmd == "flash-polarity-set") {
                 int value; cin >> value; mv.flash_polarity(value);
+            } else if(cmd == "flash-delay-set") {
+                int value; cin >> value; mv.flash_delay(value);
+            } else if(cmd == "flash-pulse-set") {
+                int value; cin >> value; mv.flash_pulse(value);
             } else if(cmd == "params-reset") {
                 mv.params_reset();
             } else if(cmd == "params-save") {

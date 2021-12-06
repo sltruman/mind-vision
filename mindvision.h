@@ -81,13 +81,22 @@ public:
 
     //IO
     void io();
+    void io_mode(string type,int index,int value);
+    void io_state(string type,int index,int value);
 
-
+    //触发控制
     void controls();
     void trigger_mode(int value);
     void once_soft_trigger();
+    void trigger_frames(int value);
+    void trigger_delay(int);
+    void trigger_interval(int);
+    void outside_trigger_mode(int);
+    void outside_trigger_debounce(int);
     void flash_mode(int value);
     void flash_polarity(int value);
+    void flash_delay(int value);
+    void flash_pulse(int value);
 
     void params_reset();
     void params_save(int value);

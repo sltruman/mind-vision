@@ -563,23 +563,72 @@ void MindVision::resolution(int index) {
 }
 
 void MindVision::io() {
-    int state;
-    CameraGetIOState(camera,0,);
+    unsigned int state;
+    int mode;
+
+    cout << "True\n";
+
+    for(int i=0;i<capability.iInputIoCounts;i++) {
+        CameraGetInPutIOMode(camera,i,&mode);
+        CameraGetIOState(camera,i,&state);
+        cout << "Input," << mode << ',' << state << "," << endl;
+    }
+
+    for(int i=0;i<capability.iOutputIoCounts;i++) {
+        CameraGetOutPutIOMode(camera,i,&mode);
+        CameraGetOutPutIOState(camera,i,&state);
+        cout << "Output," << mode << ',' << state << "," << endl;
+    }
+}
+
+void MindVision::io_mode(string type,int index,int value) {
+    if(type=="Input")
+        CameraSetInPutIOMode(camera,index,value);
+    else
+        CameraSetOutPutIOMode(camera,index,value);
+    cout << "True " << endl;
+}
+
+void MindVision::io_state(string type,int index,int value) {
+
+    if(type=="Input") {
+        cout << "False" << endl; return;
+    } else
+        CameraSetIOState(camera,index,value);
+    cout << "True" << endl;
 }
 
 void MindVision::controls() {
-    int  pbySnapMode;
-    int StrobeMode=0;
-    int  uPolarity=0;
+    int  trigger_mode=0,trigger_count=0;
+    unsigned int trigger_delay=0,trigger_interval=0;
+    int trigger_type=0;
+    unsigned int trigger_jitter=0;
+    CameraGetTriggerMode(camera,&trigger_mode);
+    CameraGetTriggerCount(camera,&trigger_count);
+    CameraGetTriggerDelayTime(camera,&trigger_delay);
+    CameraGetExtTrigIntervalTime(camera,&trigger_interval);
+    CameraGetExtTrigShutterType(camera,&trigger_type);
+    CameraGetExtTrigJitterTime(camera,&trigger_jitter);
 
-    CameraGetTriggerMode(camera,&pbySnapMode);
-    CameraGetStrobeMode(camera,&StrobeMode);
-    CameraGetStrobePolarity(camera,&uPolarity);
+    int strobe_mode=0,strobe_polarity=0;
+    unsigned int strobe_delay=0,strobe_pulse_width =0;
+    CameraGetStrobeMode(camera,&strobe_mode);
+    CameraGetStrobePolarity(camera,&strobe_polarity);
+    CameraGetStrobeDelayTime(camera,&strobe_delay);
+    CameraGetStrobePulseWidth(camera,&strobe_pulse_width);
 
-    cout << "True "
-         << pbySnapMode << ' '
-         << StrobeMode << ' '
-         << uPolarity << ' ' << endl;
+    cout << "True" << endl
+         << trigger_mode << ','
+         << trigger_count << ','
+         << trigger_delay << ','
+         << trigger_interval << ','
+         << trigger_type << ','
+         << trigger_jitter << ','
+         << strobe_mode << ','
+         << strobe_polarity << ','
+         << strobe_delay << ','
+         << strobe_pulse_width << ','
+         << endl;
 }
 
 void MindVision::trigger_mode(int value) {
@@ -592,14 +641,49 @@ void MindVision::once_soft_trigger() {
     cout << "True " << endl;
 }
 
+void MindVision::trigger_frames(int value) {
+    CameraSetTriggerCount(camera,value);
+    cout << "True" << endl;
+}
+
+void MindVision::trigger_delay(int value) {
+    CameraSetTriggerDelayTime(camera,value);
+    cout << "True" << endl;
+}
+
+void MindVision::trigger_interval(int value) {
+    CameraSetExtTrigIntervalTime(camera,value);
+    cout << "True" << endl;
+}
+
+void MindVision::outside_trigger_mode(int value) {
+    CameraSetExtTrigShutterType(camera,value);
+    cout << "True" << endl;
+}
+
+void MindVision::outside_trigger_debounce(int value) {
+    CameraSetExtTrigJitterTime(camera,value);
+    cout << "True" << endl;
+}
+
 void MindVision::flash_mode(int value) {
     CameraSetStrobeMode(camera,value);
-    cout << "True " << endl;
+    cout << "True" << endl;
 }
 
 void MindVision::flash_polarity(int value) {
     CameraSetStrobePolarity(camera,value);
-    cout << "True " << endl;
+    cout << "True" << endl;
+}
+
+void MindVision::flash_delay(int value) {
+    CameraSetStrobeDelayTime(camera,value);
+    cout << "True" << endl;
+}
+
+void MindVision::flash_pulse(int value) {
+    CameraSetStrobePulseWidth(camera,value);
+    cout << "True" << endl;
 }
 
 void MindVision::params_reset() {
