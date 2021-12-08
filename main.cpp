@@ -131,6 +131,10 @@ int main(int argc, char *argv[])
                 int value; cin >> value; mv.flash_delay(value);
             } else if(cmd == "flash-pulse-set") {
                 int value; cin >> value; mv.flash_pulse(value);
+            } else if(cmd == "firmware") {
+                mv.firmware();
+            } else if(cmd == "rename") {
+                string name; cin >> name; mv.rename(name);
             } else if(cmd == "params-reset") {
                 mv.params_reset();
             } else if(cmd == "params-save") {
@@ -147,8 +151,12 @@ int main(int argc, char *argv[])
                 mv.snapshot_state();
             } else if(cmd == "snapshot-stop") {
                 mv.snapshot_stop();
-            } else if(cmd == "rename") {
-                string name; cin >> name; mv.rename(name);
+            } else if(cmd == "record-start") {
+                string dir; int format,quality,frames; cin >> dir >> format >> quality>> frames; mv.record_start(dir,format,quality,frames);
+            } else if(cmd == "record-state") {
+                mv.record_state();
+            } else if(cmd == "record-stop") {
+                mv.record_stop();
             } else if(cmd == "play") {
                 mv.play();
             } else if(cmd == "pause") {

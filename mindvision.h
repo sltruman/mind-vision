@@ -7,12 +7,12 @@
 #endif
 
 #include "snapshotthread.h"
+#include "recordthread.h"
 
 #include <CameraApi.h>
 #include <CameraStatus.h>
 #include <QLocalServer>
 #include <QLocalSocket>
-#include <QThread>
 
 #include <string>
 #include <fstream>
@@ -69,6 +69,7 @@ public:
     void noise(int enable);
     void noise3d(int enable,int value);
     void rotate(int value);
+    void flat_field_corrent(int enable);
 
     //视频参数
     void video();
@@ -98,11 +99,15 @@ public:
     void flash_delay(int value);
     void flash_pulse(int value);
 
+    //配置
+    void firmware();
+    void rename(string name);
     void params_reset();
     void params_save(int value);
     void params_load(int value);
     void params_save_to_file(string filepath);
     void params_load_from_file(string filepath);
+
 
     void snapshot_resolution();
     void snapshot_resolution(int index);
@@ -111,7 +116,10 @@ public:
     void snapshot_state();
     void snapshot_stop();
 
-    void rename(string name);
+    void record_start(string dir,int format,int quality,int frames);
+    void record_state();
+    void record_stop();
+
     void play();
     void pause();
 private:
@@ -121,11 +129,13 @@ private:
     string pipeName;
     int camera;
     tSdkCameraCapbility capability;
+    tSdkCameraDevInfo camera_info;
 
     unsigned char* rgbBuffer;
     int rgbBufferLength;
 
     SnapshotThread st;
+    RecordThread rt;
 };
 
 #endif // MINDVISION_H

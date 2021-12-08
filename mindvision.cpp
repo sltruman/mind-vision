@@ -66,6 +66,8 @@ void MindVision::open(string cameraName) {
         throw runtime_error("相机初始化失败！");
     }
 
+    camera_info = *pCameraInfo;
+
     auto coutbuf = cout.rdbuf(cerr.rdbuf());
     auto status = CameraInit(pCameraInfo,-1,-1,&camera);
     cerr << "CameraInitEx2 " << status << endl;
@@ -482,12 +484,15 @@ void MindVision::transform() {
     CameraGetNoiseFilterState(camera,&noise );
     CameraGetDenoise3DParams(camera,&noise3D,&count,&weight,&weights);
     CameraGetRotate(camera,&rotate);
+    int flat_field_corrent=0;
+    CameraFlatFieldingCorrectGetEnable(camera,&flat_field_corrent);
 
     cout << "True "
          << m_bHflip << ' ' << m_bVflip << ' '
          << capability.sSharpnessRange.iMin << ' ' <<  capability.sSharpnessRange.iMax << ' ' << m_Sharpness << ' '
          << noise << ' ' << noise3D << ' ' << count << ' '
          << rotate << ' '
+         << flat_field_corrent << ' '
          << endl;
 }
 
@@ -518,6 +523,11 @@ void MindVision::noise3d(int enable,int value) {
 
 void MindVision::rotate(int value) {
     CameraSetRotate(camera,value);
+    cout << "True " << endl;
+}
+
+void MindVision::flat_field_corrent(int enable) {
+    CameraFlatFieldingCorrectSetEnable(camera,enable);
     cout << "True " << endl;
 }
 
@@ -686,6 +696,29 @@ void MindVision::flash_pulse(int value) {
     cout << "True" << endl;
 }
 
+void MindVision::firmware() {
+    char firmware[256],iface[256],sdk[256];
+    CameraGetFirmwareVersion(camera,firmware);
+    CameraGetInerfaceVersion(camera,iface);
+    CameraSdkGetVersionString(sdk);
+    int updatable=0;
+    CameraCheckFwUpdate(camera,&updatable);
+
+    cout << "True" << endl
+         << firmware << ','
+         << iface << ','
+         << sdk << ','
+         << camera_info.acDriverVersion << ','
+         << updatable << ','
+         << camera_info.acFriendlyName << ','
+         << camera_info.acSn << endl;
+}
+
+void MindVision::rename(string name) {
+    cerr << CameraSetFriendlyName(camera,const_cast<char*>(name.c_str())) << " CameraSetFriendlyName" << endl;
+    cout << "True " << endl;
+}
+
 void MindVision::params_reset() {
     cerr << CameraLoadParameter(camera,PARAMETER_TEAM_DEFAULT) << " CameraLoadParameter" << endl;
     cout << "True " << endl;
@@ -745,8 +778,24 @@ void MindVision::snapshot_stop() {
     cout << "True " << endl;
 }
 
-void MindVision::rename(string name) {
-    cerr << CameraSetFriendlyName(camera,const_cast<char*>(name.c_str())) << " CameraSetFriendlyName" << endl;
+void MindVision::record_start(string dir,int format,int quality,int frames) {
+    rt.camera = camera;
+    rt.capability = capability;
+    rt.dir = dir;
+    rt.format = format;
+    rt.quality = quality;
+    rt.frames = frames;
+
+    rt.start();
+    cout << "True " << endl;
+}
+
+void MindVision::record_state() {
+    cout << "True " << rt.is_running() << " " << endl;
+}
+
+void MindVision::record_stop() {
+    rt.stop();
     cout << "True " << endl;
 }
 

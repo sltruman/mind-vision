@@ -11,6 +11,7 @@ win32:INCLUDEPATH += "C:\Program Files\MindVision\Demo\VC++\Include"
 SOURCES += \
         main.cpp \
         mindvision.cpp \
+        recordthread.cpp \
         snapshotthread.cpp
 
 
@@ -24,4 +25,5 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 HEADERS += \
     mindvision.h \
+    recordthread.h \
     snapshotthread.h

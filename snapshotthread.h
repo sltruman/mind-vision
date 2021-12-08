@@ -25,7 +25,6 @@ struct SnapshotThread : public QThread
     string dir;
     int camera,resolution,format,period;
     tSdkCameraCapbility capability;
-
 };
 
 #endif // SNAPSHOTTHREAD_H
