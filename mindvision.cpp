@@ -182,15 +182,16 @@ void MindVision::run(){
         auto sock = server.nextPendingConnection();
 
         while(QLocalSocket::ConnectedState == sock->state() && !pipeName.empty()) {
+
             if (!sock->waitForReadyRead(1000)) {
                 continue;
             }
 
             tSdkFrameHead  frameHead;
-            unsigned char* rawBuffer;
+            unsigned char* rawBuffer = nullptr;
 
             auto status = CameraGetImageBufferPriority(camera,&frameHead,&rawBuffer,2000,CAMERA_GET_IMAGE_PRIORITY_NEWEST);
-            cerr << status << " CameraGetImageBuffer" << endl;
+            cerr << status << " CameraGetImageBuffer " << ios::hex << reinterpret_cast<void*>(rawBuffer) << endl;
 
             if(status == CAMERA_STATUS_SUCCESS) {
                 CameraImageProcess(camera,rawBuffer,rgbBuffer,&frameHead);
@@ -212,6 +213,7 @@ void MindVision::run(){
             sock->write(ss.str().data(),ss.str().size());
             sock->readLine().toStdString();
             sock->write((const char*)rgbBuffer,rgbBufferLength);
+            sock->waitForBytesWritten();
         }
 
         sock->disconnectFromServer();

@@ -8,6 +8,11 @@ CONFIG -= app_bundle
 
 win32:INCLUDEPATH += "C:\Program Files\MindVision\Demo\VC++\Include"
 
+HEADERS += \
+    mindvision.h \
+    recordthread.h \
+    snapshotthread.h
+
 SOURCES += \
         main.cpp \
         mindvision.cpp \
@@ -22,8 +27,3 @@ win32:LIBS += -L"C:\Program Files\MindVision\SDK\X64" -lMVCAMSDK_X64
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
-
-HEADERS += \
-    mindvision.h \
-    recordthread.h \
-    snapshotthread.h
