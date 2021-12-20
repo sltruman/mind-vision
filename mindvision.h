@@ -18,6 +18,8 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <regex>
+#include <algorithm>
 using namespace std;
 
 class MindVision : public QThread
@@ -27,7 +29,6 @@ public:
     ~MindVision();
     void list();
     void open(string cameraName);
-    void test(string cameraName);
     void stop();
     void run() override;
 
@@ -45,6 +46,7 @@ public:
     void white_balance_mode(int index);
     void color_temrature(int index);
     void once_white_balance();
+    void white_balance_window(int x,int y,int w,int h);
     void rgb(int r,int g,int b);
     void saturation(int value);
     void monochrome(int enable);
@@ -70,6 +72,11 @@ public:
     void noise3d(int enable,int value);
     void rotate(int value);
     void flat_field_corrent(int enable);
+    void flat_field_init(int light);
+    void flat_field_params_save(string filepath);
+    void flat_field_params_load(string filepath);
+    void dead_pixels_correct(int enable);
+    void dead_pixels(string x_list,string y_list);
 
     //视频参数
     void video();
@@ -131,11 +138,11 @@ private:
     tSdkCameraCapbility capability;
     tSdkCameraDevInfo camera_info;
 
-    unsigned char* rgbBuffer;
-    int rgbBufferLength;
-
     SnapshotThread st;
     RecordThread rt;
+
+    tSdkFrameHead light_frame_head,dark_frame_head;
+    unsigned char *light_buffer,*dark_buffer;
 };
 
 #endif // MINDVISION_H

@@ -19,10 +19,6 @@ int main(int argc, char *argv[])
             log.open(string(argv[2]) + ".log");
             cerr.rdbuf(log.rdbuf());
             mv.open(argv[2]);
-        } else if(cmd == "test") {
-            log.open(string(argv[2]) + ".log");
-            cerr.rdbuf(log.rdbuf());
-            mv.test(argv[2]);
         }
 
         do {
@@ -49,6 +45,8 @@ int main(int argc, char *argv[])
                 int value; cin >> value; mv.white_balance_mode(value);
             } else if(cmd == "once-white-balance") {
                 mv.once_white_balance();
+            } else if(cmd == "white-balance-window-set") {
+                int x,y,w,h; cin >> x >> y >> w >> h; mv.white_balance_window(x,y,w,h);
             } else if(cmd == "rgb-set") {
                 int r,g,b; cin >> r >> g >> b; mv.rgb(r,g,b);
             } else if(cmd == "saturation-set") {
@@ -95,6 +93,18 @@ int main(int argc, char *argv[])
                 int enable,count; cin >> enable >> count; mv.noise3d(enable,count);
             } else if(cmd == "rotate-set") {
                 int value; cin >> value; mv.rotate(value);
+            } else if(cmd == "flat-field-corrent-set") {
+                int enable; cin >> enable; mv.flat_field_corrent(enable);
+            } else if(cmd == "flat-field-init") {
+                int light; cin >> light; mv.flat_field_init(light);
+            } else if(cmd == "flat-field-params-save") {
+                string filepath; cin >> filepath; mv.flat_field_params_save(filepath);
+            } else if(cmd == "flat-field-params-load") {
+                string filepath; cin >> filepath; mv.flat_field_params_load(filepath);
+            } else if(cmd == "dead-pixels-correct-set") {
+                int enable; cin >> enable; mv.dead_pixels_correct(enable);
+            } else if(cmd == "dead-pixels-set") {
+                string x,y; cin >> x >> y;mv.dead_pixels(x,y);
             } else if(cmd == "video") {
                 mv.video();
             } else if(cmd == "frame-rate-speed-set") {

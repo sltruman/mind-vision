@@ -2,6 +2,8 @@
 
 
 MindVision::MindVision() : camera(0)
+  , dark_buffer(nullptr)
+  , light_buffer(nullptr)
 {
     cerr << CameraSdkInit(1) << " CameraSdkInit" << endl;    //sdk初始化  0 English 1中文
 }
@@ -13,7 +15,9 @@ MindVision::~MindVision()
     pipeName.clear();
     this->wait();
     CameraUnInit(camera);
-    delete[] rgbBuffer;
+
+    delete dark_buffer;
+    delete light_buffer;
 }
 
 void MindVision::list()
@@ -100,77 +104,13 @@ void MindVision::open(string cameraName) {
     start();
 }
 
-
-void MindVision::test(string cameraName) {
-    int                     cameraCounts = 100;
-    tSdkCameraDevInfo       cameraEnumList[100];
-    CameraEnumerateDevice(cameraEnumList,&cameraCounts);
-
-    tSdkCameraDevInfo* pCameraInfo = nullptr;
-    for(auto i=0;i < cameraCounts;i++) {
-        if(cameraName == cameraEnumList[i].acSn) {
-            pCameraInfo = cameraEnumList + i;
-            break;
-        }
-    }
-
-    if(pCameraInfo == nullptr) {
-        cout << "False " << endl;
-        throw runtime_error("相机初始化失败！");
-    }
-
-    auto status = CameraInit(pCameraInfo,-1,-1,&camera);
-    cout << "CameraInitEx2 " << status << endl;
-
-    if(status != CAMERA_STATUS_SUCCESS) {
-        cout << "False " << endl;
-        throw runtime_error("相机初始化失败！");
-    }
-
-    pipeName = cameraName;
-
-    cout << "CameraGetCapability " << CameraGetCapability(camera,&capability) << endl;
-
-    rgbBufferLength = capability.sResolutionRange.iHeightMax * capability.sResolutionRange.iWidthMax * (capability.sIspCapacity.bMonoSensor ? 1 : 3);
-    rgbBuffer = new unsigned char[rgbBufferLength];
-
-    cout << "CameraPlay " << CameraPlay(camera) << endl;
-
-    if(capability.sIspCapacity.bMonoSensor) cerr << CameraSetIspOutFormat(camera,CAMERA_MEDIA_TYPE_MONO8) << " CameraSetIspOutFormat" << endl;
-    else cout << CameraSetIspOutFormat(camera,CAMERA_MEDIA_TYPE_RGB8) << " CameraSetIspOutFormat" << endl;
-
-    cout << "True " << pipeName << ' ' << endl;
-
-    while(!pipeName.empty()) {
-        tSdkFrameHead        frameHead;
-        unsigned char* rawBuffer;
-
-        auto status = CameraGetImageBuffer(camera,&frameHead,&rawBuffer,2000);
-        cout << status << " CameraGetImageBuffer" << endl;
-
-        if(status == CAMERA_STATUS_SUCCESS) {
-            cout << CameraImageProcess(camera,rawBuffer,rgbBuffer,&frameHead) << " CameraImageProcess" << endl;
-            cout << CameraReleaseImageBuffer(camera,rawBuffer) << " CameraReleaseImageBuffer" << endl;
-        }
-
-
-        stringstream ss;
-        ss << frameHead.iWidth << ' '
-           << frameHead.iHeight << ' '
-           << (frameHead.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? 1 : 3) << ' ' << endl;
-
-        cout << ss.str() << endl;
-        cout << CameraSaveImage(camera,const_cast<char*>(cameraName.c_str()),rgbBuffer,&frameHead,emSdkFileType::FILE_JPG,100) << " CameraSaveImage" << endl;
-    }
-}
-
 void MindVision::run(){
     QLocalServer::removeServer(pipeName.c_str());
     QLocalServer server;
     server.listen(pipeName.c_str());
 
-    rgbBufferLength = capability.sResolutionRange.iHeightMax * capability.sResolutionRange.iWidthMax * (capability.sIspCapacity.bMonoSensor ? 1 : 3);
-    rgbBuffer = new unsigned char[rgbBufferLength];
+    auto rgbBufferLength = capability.sResolutionRange.iHeightMax * capability.sResolutionRange.iWidthMax * (capability.sIspCapacity.bMonoSensor ? 1 : 3);
+    auto rgbBuffer = new unsigned char[rgbBufferLength];
 
     cout << "True " << pipeName << ' ' << endl;
 
@@ -218,6 +158,8 @@ void MindVision::run(){
 
         sock->disconnectFromServer();
     }
+
+    delete[] rgbBuffer;
 
     server.close();
 }
@@ -324,13 +266,17 @@ void MindVision::white_balance() {
         break;
     }
 
-    cout << "True "
+    int x,y,w,h;
+    cerr << CameraGetWbWindow(camera,&x,&y,&w,&h) << " CameraGetWbWindow" << endl;
+
+    cout << "True" << endl
          << mode << ' '
          << capability.sRgbGainRange.iRGainMin << ' ' << capability.sRgbGainRange.iRGainMax << ' ' << r << ' '
          << capability.sRgbGainRange.iGGainMin << ' ' << capability.sRgbGainRange.iGGainMax << ' ' << g << ' '
          << capability.sRgbGainRange.iBGainMin << ' ' << capability.sRgbGainRange.iBGainMax << ' ' << b << ' '
          << capability.sSaturationRange.iMin << ' ' << capability.sSaturationRange.iMax << ' ' << saturation << ' '
          << monochrome << ' ' << inverse << ' ' << algorithm << ' ' << color_temrature << ' '
+         << x << ' ' << y << ' ' << w << ' ' << h << ' '
          << endl;
 }
 
@@ -362,6 +308,11 @@ void MindVision::color_temrature(int index) {
 void MindVision::once_white_balance() {
     cerr << CameraSetOnceWB(camera) << " CameraSetOnceWB" << endl;
     cout << "True " << endl;
+}
+
+void MindVision::white_balance_window(int x,int y,int w,int h) {
+    cerr << CameraSetWbWindow(camera,x,y,w,h) << " CameraSetWbWindow" << endl;
+    cout << "True" << endl;
 }
 
 void MindVision::rgb(int r,int g,int b) {
@@ -474,7 +425,7 @@ void MindVision::contrast_ratio(int value) {
 void MindVision::transform() {
     BOOL        m_bHflip=FALSE;
     BOOL        m_bVflip=FALSE;
-    int         m_Sharpness=0,noise = 0,noise3D = 0,count = 0,weight =0,rotate  = 0;
+    int         m_Sharpness=0,noise = 0,noise3D = 0,count = 0,weight =0,rotate=0;
     float weights ;
 
     //获得图像的镜像状态。
@@ -489,12 +440,34 @@ void MindVision::transform() {
     int flat_field_corrent=0;
     CameraFlatFieldingCorrectGetEnable(camera,&flat_field_corrent);
 
-    cout << "True "
+    int dead_pixels_correct=0;
+    CameraGetCorrectDeadPixel(camera,&dead_pixels_correct);
+
+    unsigned int pixels_count = 0;
+    CameraReadDeadPixels(camera,nullptr,nullptr,&pixels_count);
+
+    vector<unsigned short> x_array(pixels_count),y_array(pixels_count);
+    CameraReadDeadPixels(camera,y_array.data(),x_array.data(),&pixels_count);
+    stringstream x_list,y_list;
+    if(x_array.size()) {
+        for(auto x : x_array) x_list << x << ',';
+        x_list.seekp(-1,ios::end); x_list << ' ';
+        for(auto y : y_array) y_list << y << ',';
+        y_list.seekp(-1,ios::end); y_list << ' ';
+    } else {
+        x_list << "None ";
+        y_list << "None ";
+    }
+
+    cout << "True" << endl
          << m_bHflip << ' ' << m_bVflip << ' '
          << capability.sSharpnessRange.iMin << ' ' <<  capability.sSharpnessRange.iMax << ' ' << m_Sharpness << ' '
          << noise << ' ' << noise3D << ' ' << count << ' '
          << rotate << ' '
          << flat_field_corrent << ' '
+         << dead_pixels_correct << ' '
+         << x_list.str()
+         << y_list.str()
          << endl;
 }
 
@@ -529,8 +502,89 @@ void MindVision::rotate(int value) {
 }
 
 void MindVision::flat_field_corrent(int enable) {
-    CameraFlatFieldingCorrectSetEnable(camera,enable);
+    cerr << CameraFlatFieldingCorrectSetEnable(camera,enable) << " CameraFlatFieldingCorrectSetEnable" << endl;
     cout << "True " << endl;
+}
+
+void MindVision::flat_field_init(int light) {
+    tSdkFrameHead	frameHead;
+    BYTE			*rawBuffer;
+    unsigned char* rgb_buffer;
+
+    auto status = CameraSnapToBuffer(camera,&frameHead,&rawBuffer,2000);
+    cerr << status << " CameraSnapToBuffer " << frameHead.uiMediaType << " " << frameHead.iWidth << " " << frameHead.iHeight << endl;
+    if(status != CAMERA_STATUS_SUCCESS) {
+        cout << "False" << endl;
+        return;
+    }
+
+    auto rgbBufferLength = frameHead.iWidth * frameHead.iHeight * (frameHead.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? 1 : 3);
+
+    if(light) {
+        if(light_buffer) delete light_buffer;
+        rgb_buffer = light_buffer = new unsigned char[rgbBufferLength];
+        light_frame_head = frameHead;
+    } else {
+        if(dark_buffer) delete dark_buffer;
+        delete light_buffer; light_buffer = nullptr;
+        rgb_buffer = dark_buffer = new unsigned char[rgbBufferLength];
+        dark_frame_head = frameHead;
+    }
+
+    cerr << CameraImageProcess(camera,rawBuffer,rgb_buffer,&frameHead) << " CameraImageProcess" << endl;
+    cerr << CameraReleaseImageBuffer(camera, rawBuffer) << " CameraReleaseImageBuffer" << endl;
+
+    if(dark_buffer && light_buffer) {
+        status = CameraFlatFieldingCorrectSetParameter(camera,dark_buffer,&dark_frame_head,light_buffer,&light_frame_head);
+        cerr << status << " CameraFlatFieldingCorrectSetParameter" << endl;
+    }
+
+    if(status != CAMERA_STATUS_SUCCESS) {
+        cout << "False" << endl
+             << status << endl;
+        return;
+    }
+
+    cout << "True" << endl;
+}
+
+void MindVision::flat_field_params_save(string filepath) {
+    cerr << CameraFlatFieldingCorrectSaveParameterToFile(camera,filepath.c_str()) << endl;
+    cout << "True" << endl;
+}
+
+void MindVision::flat_field_params_load(string filepath) {
+    cerr << CameraFlatFieldingCorrectLoadParameterFromFile(camera,filepath.c_str()) << endl;
+    cout << "True" << endl;
+}
+
+void MindVision::dead_pixels_correct(int enable) {
+    CameraSetCorrectDeadPixel(camera,enable);
+    cout << "True " << endl;
+}
+
+void MindVision::dead_pixels(string x_list,string y_list) {
+    cerr << CameraRemoveAllDeadPixels(camera) << " CameraRemoveAllDeadPixels" << endl;
+
+    if(x_list != "None") {
+        regex p(R"(,)");
+
+        sregex_token_iterator x_begin(x_list.begin(),x_list.end(),p,-1),y_begin(y_list.begin(),y_list.end(),p,-1),end;
+        vector<unsigned short> x_array,y_array;
+
+        std::transform(x_begin,end,back_inserter(x_array),[](auto x)->unsigned short {
+            return (unsigned short)stoi(x);
+        });
+
+        std::transform(y_begin,end,back_inserter(y_array),[](auto y)->unsigned short {
+            return (unsigned short)stoi(y);
+        });
+
+        cerr << CameraAddDeadPixels(camera,y_array.data(),x_array.data(),x_array.size()) << " CameraAddDeadPixels" << endl;
+    }
+
+    cerr << CameraSaveDeadPixels(camera) << " CameraSaveDeadPixels" << endl;
+    cout << "True" << endl;
 }
 
 void MindVision::video() {
