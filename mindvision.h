@@ -38,7 +38,9 @@ public:
     void brightness(int value);
     void flicker(int value);
     void gain(int value);
+    void gain_range(int minimum,int maximum);
     void exposure_time(int value);
+    void exposure_time_range(int minimum,int maximum);
     void frequency(int value);
 
     //颜色调整
@@ -77,6 +79,8 @@ public:
     void flat_field_params_load(string filepath);
     void dead_pixels_correct(int enable);
     void dead_pixels(string x_list,string y_list);
+    void undistort(int enable);
+    void undistory_params(int w,int h,string camera_matrix,string distort_coeffs);
 
     //视频参数
     void video();
@@ -86,6 +90,7 @@ public:
     //分辨率
     void resolutions();
     void resolution(int index);
+    void resolution(int x,int y,int w,int h);
 
     //IO
     void io();
@@ -108,13 +113,13 @@ public:
 
     //配置
     void firmware();
+    void name();
     void rename(string name);
     void params_reset();
     void params_save(int value);
     void params_load(int value);
     void params_save_to_file(string filepath);
     void params_load_from_file(string filepath);
-
 
     void snapshot_resolution();
     void snapshot_resolution(int index);

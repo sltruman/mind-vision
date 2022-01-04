@@ -10,7 +10,7 @@ void RecordThread::run() {
     auto rgbBuffer = new unsigned char[rgbBufferLength];
 
 ONCE:
-    if(!running) {
+    if(interrupt) {
         delete[] rgbBuffer;
         return;
     }
@@ -29,25 +29,4 @@ ONCE:
     cerr << CameraPushFrame(camera,rgbBuffer,&frameHead) << " CameraPushFrame " << frameHead.uiMediaType << " " << frameHead.iWidth << " " << frameHead.iHeight << endl;
     cerr << CameraReleaseImageBuffer(camera, rawBuffer) << " CameraReleaseImageBuffer" << endl;
     goto ONCE;
-}
-
-void RecordThread::start() {
-    stringstream filename;
-    filename << this->dir << "/mind-vision-" << std::time(0);
-
-    cerr << CameraInitRecord(camera,format,const_cast<char*>(filename.str().c_str()),0,quality,frames)
-         << " CameraInitRecord " << filename.str() << ' ' << quality << ' ' << frames
-         << endl;
-    running = true;
-
-    task = thread(&RecordThread::run,this);
-}
-
-bool RecordThread::is_running() {
-    return running;
-}
-
-void RecordThread::stop() {
-    running = false;
-    CameraStopRecord(camera);
 }

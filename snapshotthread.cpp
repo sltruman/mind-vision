@@ -29,7 +29,7 @@ ONCE:
     cerr << CameraSaveImage(camera, const_cast<char*>(filename.str().c_str()), pbyBuffer, &frameHead, format, 100) << " CameraSaveImage " << filename.str() << " " << format << endl;
     cerr << CameraReleaseImageBuffer(camera, pbyBuffer) << " CameraReleaseImageBuffer" << endl;
 
-    if(period == -1) return;
+    if(period == -1 || interrupt) return;
 
     msleep(period);
     goto ONCE;

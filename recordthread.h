@@ -9,23 +9,19 @@
 #include <CameraStatus.h>
 #include <CameraApi.h>
 
-#include <thread>
+#include <QThread>
 #include <string>
 #include <iostream>
 #include <ctime>
 #include <sstream>
 
 using namespace std;
-struct RecordThread
+struct RecordThread : public QThread
 {
     RecordThread();
-    void run();
-    void start();
-    void stop();
-    bool is_running();
+    void run() override;
 
-    thread task;
-    bool running;
+    bool interrupt;
     string dir;
     int camera,format,quality,frames;
     tSdkCameraCapbility capability;

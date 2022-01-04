@@ -104,7 +104,7 @@ void MindVision::open(string cameraName) {
     start();
 }
 
-void MindVision::run(){
+void MindVision::run() {
     QLocalServer::removeServer(pipeName.c_str());
     QLocalServer server;
     server.listen(pipeName.c_str());
@@ -123,33 +123,36 @@ void MindVision::run(){
 
         while(QLocalSocket::ConnectedState == sock->state() && !pipeName.empty()) {
 
-            if (!sock->waitForReadyRead(1000)) {
+            if (!sock->waitForReadyRead(1000))
                 continue;
-            }
 
-            tSdkFrameHead  frameHead;
+            sock->readLine().toStdString();
+
+            tSdkFrameHead  frameHead,frameHead2;
             unsigned char* rawBuffer = nullptr;
 
             auto status = CameraGetImageBufferPriority(camera,&frameHead,&rawBuffer,2000,CAMERA_GET_IMAGE_PRIORITY_NEWEST);
+
             cerr << status << " CameraGetImageBuffer " << ios::hex << reinterpret_cast<void*>(rawBuffer) << endl;
 
             if(status == CAMERA_STATUS_SUCCESS) {
+                frameHead2 = frameHead;
                 CameraImageProcess(camera,rawBuffer,rgbBuffer,&frameHead);
+                CameraFlipFrameBuffer(rgbBuffer,&frameHead,1);
                 CameraReleaseImageBuffer(camera,rawBuffer);
             } else {
-                frameHead.iHeight = capability.sResolutionRange.iHeightMax;
-                frameHead.iWidth = capability.sResolutionRange.iWidthMax;
-                frameHead.uiMediaType = (capability.sIspCapacity.bMonoSensor ? 1 : 3);
+                frameHead = frameHead2;
             }
 
             stringstream ss;
-            ss << frameHead.iWidth << ' '
+            ss << capability.sResolutionRange.iWidthMax << ' '
+               << capability.sResolutionRange.iHeightMax << ' '
+               << frameHead.iWidth << ' '
                << frameHead.iHeight << ' '
                << (frameHead.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? 1 : 3) << ' ' << endl;
 
             rgbBufferLength = frameHead.iHeight * frameHead.iWidth * (frameHead.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? 1 : 3);
 
-            sock->readLine().toStdString();
             sock->write(ss.str().data(),ss.str().size());
             sock->readLine().toStdString();
             sock->write((const char*)rgbBuffer,rgbBufferLength);
@@ -196,7 +199,7 @@ void MindVision::exposure() {
     status += ret = CameraGetExposureLineTime(camera, &expLineTime);
     cerr << ret << " CameraGetExposureLineTime" << endl;
 
-    cout << (status ? "False " : "True ")
+    cout << (status ? "False" : "True") << endl
          << mode << ' '
          << capability.sExposeDesc.uiTargetMin << ' ' << capability.sExposeDesc.uiTargetMax << ' ' << brightness << ' '
          << flicker << ' '
@@ -225,10 +228,20 @@ void MindVision::gain(int value) {
     cout << "True " << endl;
 }
 
+void MindVision::gain_range(int minimum,int maximum) {
+    CameraSetAeAnalogGainRange(camera,minimum,maximum);
+    cout << "True " << endl;
+}
+
 void MindVision::exposure_time(int value) {
     double          expLineTime;
     CameraGetExposureLineTime(camera, &expLineTime);
     CameraSetExposureTime(camera,value * expLineTime);
+    cout << "True " << endl;
+}
+
+void MindVision::exposure_time_range(int minimum,int maximum) {
+    CameraSetAeExposureRange(camera,minimum,maximum);
     cout << "True " << endl;
 }
 
@@ -459,6 +472,9 @@ void MindVision::transform() {
         y_list << "None ";
     }
 
+    int undistort;
+    CameraGetUndistortEnable(camera,&undistort);
+
     cout << "True" << endl
          << m_bHflip << ' ' << m_bVflip << ' '
          << capability.sSharpnessRange.iMin << ' ' <<  capability.sSharpnessRange.iMax << ' ' << m_Sharpness << ' '
@@ -468,6 +484,7 @@ void MindVision::transform() {
          << dead_pixels_correct << ' '
          << x_list.str()
          << y_list.str()
+         << undistort << ' '
          << endl;
 }
 
@@ -587,6 +604,24 @@ void MindVision::dead_pixels(string x_list,string y_list) {
     cout << "True" << endl;
 }
 
+void MindVision::undistort(int enable) {
+    cerr << CameraSetUndistortEnable(camera,enable) << " CameraSetUndistortEnable" << endl;
+    cout << "True" << endl;
+}
+
+void MindVision::undistory_params(int w,int h,string camera_matrix,string distort_coeffs) {
+    regex p(R"(,)");
+
+    sregex_token_iterator m1_begin(camera_matrix.begin(),camera_matrix.end(),p,-1),m2_begin(distort_coeffs.begin(),distort_coeffs.end(),p,-1),end;
+    vector<double> m1,m2;
+
+    std::transform(m1_begin,end,back_inserter(m1),[](auto v) { return (double)stod(v); });
+    std::transform(m2_begin,end,back_inserter(m2),[](auto v) { return (double)stod(v); });
+
+    cerr << CameraSetUndistortParams(camera,w,h,m1.data(),m2.data()) << " CameraSetUndistortParams" << endl;
+    cout << "True" << endl;
+}
+
 void MindVision::video() {
     int speed=0,hz=0;
     CameraGetFrameSpeed(camera,&speed);
@@ -611,20 +646,49 @@ void MindVision::resolutions() {
     tSdkImageResolution resolution;
     CameraGetImageResolution(camera,&resolution);
 
-    stringstream ss;
+    stringstream ss,ss2;
     for(auto i=0;i < capability.iImageSizeDesc;i++)
         ss << capability.pImageSizeDesc[i].acDescription << ',';
     ss.seekp(-1,ios::end); ss << " ";
 
-    cout << "True" << ' '
-         << (resolution.iIndex != 0xFF ? 0 : 1) << ' '
+    ss2 << resolution.iHOffsetFOV << ',' << resolution.iVOffsetFOV << ',' << resolution.iWidth << ',' << resolution.iHeight;
+
+    cout << "True" << endl
+         << (resolution.iIndex != 0xFF ? 0 : 1) << ',' << resolution.iIndex << endl
+         << ss2.str() << endl
          << ss.str()
-         << resolution.iIndex << ' '
          << endl;
 }
 
 void MindVision::resolution(int index) {
     CameraSetImageResolution(camera,&capability.pImageSizeDesc[index]);
+    cout << "True " << endl;
+}
+
+void MindVision::resolution(int x,int y,int w,int h) {
+    w = w < 50 ? 50 : w;
+    h = h < 50 ? 50 : h;
+    x -= x % 16;
+    y -= y % 4;
+    w -= w % 16;
+    h -= h % 4;
+
+    tSdkImageResolution sRoiResolution = { 0 };
+    sRoiResolution.iIndex = 0xff;
+    sRoiResolution.iWidth = w;
+    sRoiResolution.iWidthFOV = w;
+    sRoiResolution.iHeight = h;
+    sRoiResolution.iHeightFOV = h;
+    sRoiResolution.iHOffsetFOV = x;
+    sRoiResolution.iVOffsetFOV = y;
+    sRoiResolution.iWidthZoomSw = 0;
+    sRoiResolution.iHeightZoomSw = 0;
+    sRoiResolution.uBinAverageMode = 0;
+    sRoiResolution.uBinSumMode = 0;
+    sRoiResolution.uResampleMask = 0;
+    sRoiResolution.uSkipMode = 0;
+
+    cerr << CameraSetImageResolution(camera, &sRoiResolution) << " CameraSetImageResolution " << x << ' ' << y << ' ' << w << ' ' << h << endl;
     cout << "True " << endl;
 }
 
@@ -759,6 +823,8 @@ void MindVision::firmware() {
     CameraSdkGetVersionString(sdk);
     int updatable=0;
     CameraCheckFwUpdate(camera,&updatable);
+    char nickname[256];
+    cerr << CameraGetFriendlyName(camera,nickname) << " CameraGetFriendlyName" << endl;
 
     cout << "True" << endl
          << firmware << ','
@@ -766,8 +832,16 @@ void MindVision::firmware() {
          << sdk << ','
          << camera_info.acDriverVersion << ','
          << updatable << ','
-         << camera_info.acFriendlyName << ','
+         << nickname << ','
          << camera_info.acSn << endl;
+}
+
+void MindVision::name() {
+    char nickname[256];
+    cerr << CameraGetFriendlyName(camera,nickname) << " CameraGetFriendlyName" << endl;
+    cout << "True" << endl
+         << nickname
+         << endl;
 }
 
 void MindVision::rename(string name) {
@@ -818,6 +892,7 @@ void MindVision::snapshot_start(string dir,int resolution,int format,int period)
     st.capability = capability;
     st.resolution = resolution;
     st.period = period;
+    st.interrupt = false;
 
     st.start();
     cout << "True " << endl;
@@ -829,7 +904,6 @@ void MindVision::snapshot_state() {
 
 void MindVision::snapshot_stop() {
     st.interrupt = true;
-    st.terminate();
     st.wait();
     cout << "True " << endl;
 }
@@ -841,17 +915,28 @@ void MindVision::record_start(string dir,int format,int quality,int frames) {
     rt.format = format;
     rt.quality = quality;
     rt.frames = frames;
+    rt.interrupt = false;
+
+    stringstream filename;
+    filename << dir << "/mind-vision-" << std::time(0);
+
+    cerr << CameraInitRecord(camera,format,const_cast<char*>(filename.str().c_str()),0,quality,frames)
+         << " CameraInitRecord " << filename.str() << ' ' << quality << ' ' << frames
+         << endl;
 
     rt.start();
+
     cout << "True " << endl;
 }
 
 void MindVision::record_state() {
-    cout << "True " << rt.is_running() << " " << endl;
+    cout << "True " << rt.isRunning() << " " << endl;
 }
 
 void MindVision::record_stop() {
-    rt.stop();
+    rt.interrupt = true;
+    rt.wait();
+    cerr << CameraStopRecord(camera) << " CameraStopRecord" << endl;
     cout << "True " << endl;
 }
 

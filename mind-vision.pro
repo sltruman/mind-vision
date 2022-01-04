@@ -8,6 +8,9 @@ CONFIG -= app_bundle
 
 win32:INCLUDEPATH += "C:\Program Files (x86)\MindVision\Demo\VC++\Include"
 
+unix:LIBS += -lMVSDK
+win32:LIBS += -L"C:\Program Files (x86)\MindVision\SDK\X64" -lMVCAMSDK_X64
+
 HEADERS += \
     mindvision.h \
     recordthread.h \
@@ -18,9 +21,6 @@ SOURCES += \
         mindvision.cpp \
         recordthread.cpp \
         snapshotthread.cpp
-
-unix:LIBS += -lMVSDK
-win32:LIBS += -L"C:\Program Files (x86)\MindVision\SDK\X64" -lMVCAMSDK_X64
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

@@ -35,8 +35,12 @@ int main(int argc, char *argv[])
                 int value; cin >> value; mv.flicker(value);
             } else if(cmd == "gain-set") {
                 int value; cin >> value; mv.gain(value);
+            } else if(cmd == "gain-range-set") {
+                int minimum,maximum; cin >> minimum >> maximum; mv.gain_range(minimum,maximum);
             } else if(cmd == "exposure-time-set") {
                 int value; cin >> value; mv.exposure_time(value);
+            } else if(cmd == "exposure-time-range-set") {
+                int minimum,maximum; cin >> minimum >> maximum; mv.exposure_time_range(minimum,maximum);
             } else if(cmd == "frequency-set") {
                 int value; cin >> value; mv.frequency(value);
             } else if(cmd == "white-balance") {
@@ -79,6 +83,8 @@ int main(int argc, char *argv[])
                 mv.resolutions();
             } else if(cmd == "resolution-set") {
                 int value; cin >> value; mv.resolution(value);
+            } else if(cmd == "resolution-custom-set") {
+                int x,y,w,h; cin >> x >> y >> w >> h; mv.resolution(x,y,w,h);
             } else if(cmd == "transform") {
                 mv.transform();
             } else if(cmd == "horizontal-mirror-set") {
@@ -105,6 +111,12 @@ int main(int argc, char *argv[])
                 int enable; cin >> enable; mv.dead_pixels_correct(enable);
             } else if(cmd == "dead-pixels-set") {
                 string x,y; cin >> x >> y;mv.dead_pixels(x,y);
+            } else if(cmd == "undistort-set") {
+                int enable; cin >> enable;
+                mv.undistort(enable);
+            } else if(cmd == "undistort-params-set") {
+                int w,h; string camera_matrix,distort_coeffs; cin >> w >> h >> camera_matrix >> distort_coeffs;
+                mv.undistory_params(w,h,camera_matrix,distort_coeffs);
             } else if(cmd == "video") {
                 mv.video();
             } else if(cmd == "frame-rate-speed-set") {
@@ -143,6 +155,8 @@ int main(int argc, char *argv[])
                 int value; cin >> value; mv.flash_pulse(value);
             } else if(cmd == "firmware") {
                 mv.firmware();
+            } else if(cmd == "name") {
+                mv.name();
             } else if(cmd == "rename") {
                 string name; cin >> name; mv.rename(name);
             } else if(cmd == "params-reset") {
