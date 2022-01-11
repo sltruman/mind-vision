@@ -18,8 +18,8 @@ ONCE:
     tSdkFrameHead	frameHead;
     BYTE			*rawBuffer;
 
-    auto status = CameraSnapToBuffer(camera,&frameHead,&rawBuffer,2000);
-    cerr << status << " CameraSnapToBuffer " << frameHead.uiMediaType << " " << frameHead.iWidth << " " << frameHead.iHeight << endl;
+    auto status = CameraGetImageBufferPriority(camera,&frameHead,&rawBuffer,2000,CAMERA_GET_IMAGE_PRIORITY_NEXT);
+    cerr << status << " CameraGetImageBuffer " << frameHead.uiMediaType << " " << frameHead.iWidth << " " << frameHead.iHeight << endl;
 
     if(status != CAMERA_STATUS_SUCCESS) {
         goto ONCE;

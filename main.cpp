@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
             mv.list();
             return 0;
         } else if(cmd == "open") {
-            log.open(string(argv[2]) + ".log");
+            log.open("log/" + string(argv[2]) + ".log");
             cerr.rdbuf(log.rdbuf());
             mv.open(argv[2]);
         }
@@ -31,6 +31,8 @@ int main(int argc, char *argv[])
                 int value; cin >> value; mv.exposure_mode(value);
             } else if(cmd == "brightness-set") {
                 int value; cin >> value; mv.brightness(value);
+            } else if(cmd == "threshold-set") {
+                int value; cin >> value; mv.threshold(value);
             } else if(cmd == "flicker-set") {
                 int value; cin >> value; mv.flicker(value);
             } else if(cmd == "gain-set") {
@@ -111,6 +113,10 @@ int main(int argc, char *argv[])
                 int enable; cin >> enable; mv.dead_pixels_correct(enable);
             } else if(cmd == "dead-pixels-set") {
                 string x,y; cin >> x >> y;mv.dead_pixels(x,y);
+            } else if(cmd == "dead-pixels-analyze-for-bright") {
+                int threshold; cin >> threshold; mv.dead_pixels_analyze_for_bright(threshold);
+            } else if(cmd == "dead-pixels-analyze-for-dead") {
+                int threshold; cin >> threshold; mv.dead_pixels_analyze_for_dead(threshold);
             } else if(cmd == "undistort-set") {
                 int enable; cin >> enable;
                 mv.undistort(enable);
@@ -187,6 +193,10 @@ int main(int argc, char *argv[])
                 mv.pause();
             } else if(cmd == "stop") {
                 mv.stop();
+            } else if(cmd == "status") {
+                string type; cin >> type; mv.status(type);
+            } else {
+                break;
             }
         } while(cmd != "exit");
     } catch(exception& e) {}

@@ -20,6 +20,7 @@
 #include <sstream>
 #include <regex>
 #include <algorithm>
+#include <mutex>
 using namespace std;
 
 class MindVision : public QThread
@@ -36,6 +37,7 @@ public:
     void exposure();
     void exposure_mode(int value);
     void brightness(int value);
+    void threshold(int value);
     void flicker(int value);
     void gain(int value);
     void gain_range(int minimum,int maximum);
@@ -79,6 +81,8 @@ public:
     void flat_field_params_load(string filepath);
     void dead_pixels_correct(int enable);
     void dead_pixels(string x_list,string y_list);
+    void dead_pixels_analyze_for_bright(int threshold);
+    void dead_pixels_analyze_for_dead(int threshold);
     void undistort(int enable);
     void undistory_params(int w,int h,string camera_matrix,string distort_coeffs);
 
@@ -102,14 +106,14 @@ public:
     void trigger_mode(int value);
     void once_soft_trigger();
     void trigger_frames(int value);
-    void trigger_delay(int);
-    void trigger_interval(int);
+    void trigger_delay(unsigned int);
+    void trigger_interval(unsigned int);
     void outside_trigger_mode(int);
-    void outside_trigger_debounce(int);
+    void outside_trigger_debounce(unsigned int);
     void flash_mode(int value);
     void flash_polarity(int value);
-    void flash_delay(int value);
-    void flash_pulse(int value);
+    void flash_delay(unsigned int value);
+    void flash_pulse(unsigned int value);
 
     //配置
     void firmware();
@@ -134,6 +138,10 @@ public:
 
     void play();
     void pause();
+
+    void status(string type);
+
+
 private:
     ofstream log;
     streambuf* rdbuf;
@@ -148,6 +156,10 @@ private:
 
     tSdkFrameHead light_frame_head,dark_frame_head;
     unsigned char *light_buffer,*dark_buffer;
+
+    mutex bayer_img_mutex;
+    vector<unsigned char> bayer_img;
+    pair<unsigned int,unsigned int> bayer_img_size;
 };
 
 #endif // MINDVISION_H
