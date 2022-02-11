@@ -12,6 +12,7 @@ unix:LIBS += -lMVSDK
 win32:LIBS += -L"C:\Program Files (x86)\MindVision\SDK\X64" -lMVCAMSDK_X64
 
 HEADERS += \
+    brightness.h \
     defectpixelalg.h \
     mindvision.h \
     recordthread.h \

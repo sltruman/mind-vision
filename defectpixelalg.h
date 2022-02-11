@@ -51,13 +51,13 @@ static VOID AnalyzeDefectPixelFromImage(std::vector<MvPoint16>& Points, BYTE *pI
 	nLastCol = g_nStatisticsHSize - 2;
 	nLastRow = g_nStatisticsVSize - 2;
 
-	for (nRow=2; nRow<nLastRow; nRow++)
+    for (nRow=2; nRow<nLastRow; nRow++)
 	{
 		pCurLine = &pImage[nRow*g_nStatisticsHSize];
 		pNext2Line = &pImage[(nRow+2)*g_nStatisticsHSize];
 		pPrev2Line = &pImage[(nRow-2)*g_nStatisticsHSize];
 
-		for (nCol=2; nCol<nLastCol; nCol++)
+        for (nCol=2; nCol<nLastCol; nCol++)
 		{
 			// 检查周围点
 			

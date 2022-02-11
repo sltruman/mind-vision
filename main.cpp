@@ -42,9 +42,11 @@ int main(int argc, char *argv[])
             } else if(cmd == "exposure-time-set") {
                 int value; cin >> value; mv.exposure_time(value);
             } else if(cmd == "exposure-time-range-set") {
-                int minimum,maximum; cin >> minimum >> maximum; mv.exposure_time_range(minimum,maximum);
+                double minimum,maximum; cin >> minimum >> maximum; mv.exposure_time_range(minimum,maximum);
             } else if(cmd == "frequency-set") {
                 int value; cin >> value; mv.frequency(value);
+            } else if(cmd == "exposure-window-set") {
+                int x,y,w,h; cin >> x >> y >> w >> h; mv.exposure_window(x,y,w,h);
             } else if(cmd == "white-balance") {
                 mv.white_balance();
             } else if(cmd == "white-balance-mode-set") {
@@ -90,9 +92,9 @@ int main(int argc, char *argv[])
             } else if(cmd == "transform") {
                 mv.transform();
             } else if(cmd == "horizontal-mirror-set") {
-                int value; cin >> value; mv.horizontal_mirror(value);
+                int hard,value; cin >> hard >> value; mv.horizontal_mirror(hard,value);
             } else if(cmd == "vertical-mirror-set") {
-                int value; cin >> value; mv.vertical_mirror(value);
+                int hard,value; cin >> hard >> value; mv.vertical_mirror(hard,value);
             } else if(cmd == "acutance-set") {
                 int value; cin >> value; mv.acutance(value);
             } else if(cmd == "noise-set") {
@@ -129,6 +131,10 @@ int main(int argc, char *argv[])
                 int index; cin >> index; mv.frame_rate_speed(index);
             } else if(cmd == "frame-rate-limit-set") {
                 int value; cin >> value; mv.frame_rate_limit(value);
+            } else if(cmd == "video-output-format-set") {
+                int index; cin >> index; mv.video_output_format(index);
+            } else if(cmd == "raw-output-range-set") {
+                int value; cin >> value; mv.raw_output_range(value);
             } else if(cmd == "io") {
                 mv.io();
             } else if(cmd == "io-mode-set") {
@@ -147,10 +153,12 @@ int main(int argc, char *argv[])
                 int value; cin >> value; mv.trigger_delay(value);
             } else if(cmd == "trigger-interval-set") {
                 int value; cin >> value; mv.trigger_interval(value);
-            }else if(cmd == "outside-trigger-mode-set") {
+            } else if(cmd == "outside-trigger-mode-set") {
                 int value; cin >> value; mv.outside_trigger_mode(value);
-            }  else if(cmd == "outside-trigger-debounce-set") {
+            } else if(cmd == "outside-trigger-debounce-set") {
                 int value; cin >> value; mv.outside_trigger_debounce(value);
+            } else if(cmd == "outside-shutter-set") {
+                int index; cin >> index; mv.outside_shutter(index);
             } else if(cmd == "flash-mode-set") {
                 int value; cin >> value; mv.flash_mode(value);
             } else if(cmd == "flash-polarity-set") {
@@ -164,7 +172,11 @@ int main(int argc, char *argv[])
             } else if(cmd == "name") {
                 mv.name();
             } else if(cmd == "rename") {
-                string name; cin >> name; mv.rename(name);
+                string name;
+                getline(cin,name);
+                mv.rename(name.substr(1));
+            } else if(cmd == "rename-empty") {
+                mv.rename("");
             } else if(cmd == "params-reset") {
                 mv.params_reset();
             } else if(cmd == "params-save") {
@@ -195,6 +207,8 @@ int main(int argc, char *argv[])
                 mv.stop();
             } else if(cmd == "status") {
                 string type; cin >> type; mv.status(type);
+            } else if(cmd == "brightness") {
+                mv.brightness();
             } else {
                 break;
             }

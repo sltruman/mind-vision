@@ -42,8 +42,9 @@ public:
     void gain(int value);
     void gain_range(int minimum,int maximum);
     void exposure_time(int value);
-    void exposure_time_range(int minimum,int maximum);
+    void exposure_time_range(double minimum,double maximum);
     void frequency(int value);
+    void exposure_window(int x,int y,int w,int h);
 
     //颜色调整
     void white_balance();
@@ -69,8 +70,8 @@ public:
 
     //图形变换
     void transform();
-    void horizontal_mirror(int value);
-    void vertical_mirror(int value);
+    void horizontal_mirror(int hard,int value);
+    void vertical_mirror(int hard,int value);
     void acutance(int value);
     void noise(int enable);
     void noise3d(int enable,int value);
@@ -90,6 +91,8 @@ public:
     void video();
     void frame_rate_speed(int index);
     void frame_rate_limit(int value);
+    void video_output_format(int index);
+    void raw_output_range(int value);
 
     //分辨率
     void resolutions();
@@ -110,6 +113,7 @@ public:
     void trigger_interval(unsigned int);
     void outside_trigger_mode(int);
     void outside_trigger_debounce(unsigned int);
+    void outside_shutter(int);
     void flash_mode(int value);
     void flash_polarity(int value);
     void flash_delay(unsigned int value);
@@ -140,7 +144,7 @@ public:
     void pause();
 
     void status(string type);
-
+    void brightness();
 
 private:
     ofstream log;
@@ -157,9 +161,7 @@ private:
     tSdkFrameHead light_frame_head,dark_frame_head;
     unsigned char *light_buffer,*dark_buffer;
 
-    mutex bayer_img_mutex;
-    vector<unsigned char> bayer_img;
-    pair<unsigned int,unsigned int> bayer_img_size;
+    bool playing;
 };
 
 #endif // MINDVISION_H

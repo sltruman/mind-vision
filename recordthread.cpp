@@ -18,7 +18,7 @@ ONCE:
     tSdkFrameHead	frameHead;
     BYTE			*rawBuffer;
 
-    auto status = CameraGetImageBufferPriority(camera,&frameHead,&rawBuffer,2000,CAMERA_GET_IMAGE_PRIORITY_NEXT);
+    auto status = CameraGetImageBuffer(camera,&frameHead,&rawBuffer,10000);
     cerr << status << " CameraGetImageBuffer " << frameHead.uiMediaType << " " << frameHead.iWidth << " " << frameHead.iHeight << endl;
 
     if(status != CAMERA_STATUS_SUCCESS) {
