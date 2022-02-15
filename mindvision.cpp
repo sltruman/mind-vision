@@ -3,6 +3,7 @@
 #include "brightness.h"
 
 #include <QStandardPaths>
+#include <QSharedMemory>
 
 MindVision::MindVision() : camera(0)
   , dark_buffer(nullptr)
@@ -108,71 +109,43 @@ void MindVision::open(string cameraName) {
 }
 
 void MindVision::run() {
-    QLocalServer::removeServer(pipeName.c_str());
-    QLocalServer server;
-    server.listen(pipeName.c_str());
+    auto rgbBufferMaxLength = sizeof(frame_head) + capability.sResolutionRange.iWidthMax * capability.sResolutionRange.iHeightMax * (capability.sIspCapacity.bMonoSensor ? 1 : 3);
 
-    auto rgbBufferLength = capability.sResolutionRange.iHeightMax * capability.sResolutionRange.iWidthMax * (capability.sIspCapacity.bMonoSensor ? 1 : 3);
-    auto rgbBuffer = new unsigned char[rgbBufferLength];
+    status(camera_info.acPortType);
+
+    QSharedMemory sm0(QString::fromStdString(pipeName + ".0.sm"));
+    QSharedMemory& sm = sm0;
+
+    sm.create(rgbBufferMaxLength);
 
     cout << "True " << pipeName << ' ' << endl;
 
-    status_sync(camera_info.acPortType);
+    while(!pipeName.empty()) {
+        tSdkFrameHead frameHead;
+        unsigned char* rawBuffer = nullptr;
 
-    while(server.isListening() && !pipeName.empty()) {
-        if(!server.waitForNewConnection(1000)) {
+        if (CAMERA_STATUS_SUCCESS != CameraGetImageBufferPriority(camera,&frameHead,&rawBuffer,2000,CAMERA_GET_IMAGE_PRIORITY_NEWEST))
             continue;
-        }
 
-        auto sock = server.nextPendingConnection();
-        int i=1;
-        while(QLocalSocket::ConnectedState == sock->state() && !pipeName.empty()) {
-            if (!sock->waitForReadyRead(1000))
-                continue;
+        frame_head.num = frame_head.num+1;
+        frame_head.width = frameHead.iWidth;
+        frame_head.height = frameHead.iHeight;
+        frame_head.bits = frameHead.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? 1 : 3;
+        frame_head.snapshot_status = st.isRunning();
+        frame_head.record_status = rt.isRunning();
 
-            sock->readLine().toStdString();
-            unsigned char* rawBuffer = nullptr;
-            tSdkFrameHead frameHead;
+        sm.lock();
 
-            auto status = 0;
+        auto frameHeadBuffer = reinterpret_cast<unsigned char*>(sm.data());
+        auto rgbBuffer = frameHeadBuffer + sizeof(frame_head);
 
-            status = CameraGetImageBufferPriority(camera,&frameHead,&rawBuffer,2000,CAMERA_GET_IMAGE_PRIORITY_NEWEST);
+        memcpy(frameHeadBuffer,&frame_head,sizeof(frame_head));
+        CameraImageProcess(camera,rawBuffer,rgbBuffer,&frameHead);
+        CameraFlipFrameBuffer(rgbBuffer,&frameHead,1);
+        sm.unlock();
 
-            if (status == CAMERA_STATUS_SUCCESS) {
-                CameraImageProcess(camera,rawBuffer,rgbBuffer,&frameHead);
-                CameraFlipFrameBuffer(rgbBuffer,&frameHead,1);
-
-                stringstream ss;
-                ss << capability.sResolutionRange.iWidthMax << ' '
-                   << capability.sResolutionRange.iHeightMax << ' '
-                   << frameHead.iWidth << ' '
-                   << frameHead.iHeight << ' '
-                   << (frameHead.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? 1 : 3) << ' ' << endl;
-
-                sock->write(ss.str().data(),ss.str().size());
-                sock->readLine().toStdString();
-                sock->write((const char*)rgbBuffer,frameHead.iWidth * frameHead.iHeight * (frameHead.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? 1 : 3));
-
-                CameraReleaseImageBuffer(camera,rawBuffer);
-            } else {
-                stringstream ss;
-                ss << 0 << ' '
-                   << 0 << ' '
-                   << 0 << ' '
-                   << 0 << ' '
-                   << 0 << ' ' << endl;
-                sock->write(ss.str().data(),ss.str().size());
-            }
-
-            sock->waitForBytesWritten();
-        }
-
-        sock->disconnectFromServer();
+        CameraReleaseImageBuffer(camera,rawBuffer);
     }
-
-    delete[] rgbBuffer;
-
-    server.close();
 }
 
 void MindVision::exposure(bool full) {
@@ -205,8 +178,9 @@ void MindVision::exposure(bool full) {
     CameraGetAnalogGain(camera,&analogGain);
     CameraGetExposureTime(camera,&exposureTime);
 
-    cout.precision(2);
-    cout << "True\n"
+    stringstream ss;
+    ss.precision(2);
+    ss << "True\n"
          << mode << ','
          << capability.sExposeDesc.uiTargetMin << ','
          << capability.sExposeDesc.uiTargetMax << ','
@@ -228,6 +202,13 @@ void MindVision::exposure(bool full) {
          << (int)exposureRangeMaximum2 << ",\n"
          << x << ',' << y << ',' << w << ',' << h << ','
          << endl;
+
+    ss.str().copy(frame_head.exposure_status,ss.str().size());
+
+    if(full) {
+        cout << ss.str();
+        cout.flush();
+    }
 }
 
 void MindVision::exposure_mode(int value) {
@@ -274,7 +255,6 @@ void MindVision::frequency(int value) {
 
 void MindVision::exposure_window(int x,int y,int w,int h) {
     CameraSetAeWindow(camera,x,y,w,h);
-
 }
 
 void MindVision::white_balance() {
@@ -922,7 +902,6 @@ void MindVision::outside_trigger_mode(int value) {
 
 void MindVision::outside_trigger_debounce(unsigned int value) {
     cerr << CameraSetExtTrigJitterTime(camera,value) << " CameraSetExtTrigJitterTime " << value << endl;
-
 }
 
 void MindVision::outside_shutter(int index) {
@@ -932,12 +911,10 @@ void MindVision::outside_shutter(int index) {
 
 void MindVision::flash_mode(int value) {
     cerr << CameraSetStrobeMode(camera,value) << " CameraSetStrobeMode " << value << endl;
-
 }
 
 void MindVision::flash_polarity(int value) {
     CameraSetStrobePolarity(camera,value);
-
 }
 
 void MindVision::flash_delay(unsigned int value) {
@@ -1013,6 +990,7 @@ void MindVision::snapshot_resolution(int index) {
 }
 
 void MindVision::snapshot_start(string dir,int resolution,int format,int period) {
+    snapshot_state();
     st.dir = dir;
     st.format = format;
     st.camera = camera;
@@ -1026,7 +1004,7 @@ void MindVision::snapshot_start(string dir,int resolution,int format,int period)
 }
 
 void MindVision::snapshot_state() {
-    cout << "True " << st.isRunning() << " " << endl;
+
 }
 
 void MindVision::snapshot_stop() {
@@ -1035,6 +1013,7 @@ void MindVision::snapshot_stop() {
 }
 
 void MindVision::record_start(string dir,int format,int quality,int frames) {
+    record_state();
     rt.camera = camera;
     rt.capability = capability;
     rt.dir = dir;
@@ -1054,7 +1033,6 @@ void MindVision::record_start(string dir,int format,int quality,int frames) {
 }
 
 void MindVision::record_state() {
-    cout << "True " << rt.isRunning() << " " << endl;
 }
 
 void MindVision::record_stop() {
@@ -1071,23 +1049,15 @@ void MindVision::play() {
 void MindVision::pause() {
     playing = false;
     cerr << CameraPause(camera) << " CameraPause"  << endl;
-
 }
 
 void MindVision::stop() {
+    pipeName.clear();
     playing = false;
     cerr << CameraStop(camera) << " CameraStop"  << endl;
-
 }
 
 void MindVision::status(string type) {
-    cout << status_string.str();
-    cout.flush();
-
-    status_sync(type);
-}
-
-void MindVision::status_sync(string type) {
     const int IO_CONTROL_DEVICE_TEMPERATURE	= 20;
     const int IO_CONTROL_GET_FRAME_RESEND   = 17;
     const int IO_CONTROL_GET_LINK_SPEED	= 26;
@@ -1181,6 +1151,8 @@ void MindVision::status_sync(string type) {
     }
 
     capture = statistic.iCapture;
+
+    status_string.str().copy(frame_head.camera_status,status_string.str().size());
 }
 
 void MindVision::brightness() {

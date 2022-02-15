@@ -11,9 +11,6 @@
 
 #include <CameraApi.h>
 #include <CameraStatus.h>
-#include <QLocalServer>
-#include <QLocalSocket>
-
 #include <string>
 #include <fstream>
 #include <iostream>
@@ -148,6 +145,17 @@ public:
     void brightness();
 
 private:
+    struct {
+        int num = 0;
+        int width = 0;
+        int height = 0;
+        int bits = 0;
+        char camera_status[256] = "\0";
+        char exposure_status[256] = "\0";
+        int record_status = 0;
+        int snapshot_status = 0;
+    } frame_head;
+
     ofstream log;
     streambuf* rdbuf;
 

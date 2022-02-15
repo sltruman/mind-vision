@@ -193,22 +193,16 @@ int main(int argc, char *argv[])
                 string value; cin >> value; mv.params_load_from_file(value);
             } else if(cmd == "snapshot-start") {
                 string dir; int resolution,format,period; cin >> dir >> resolution >> format >> period; mv.snapshot_start(dir,resolution,format,period);
-            } else if(cmd == "snapshot-state") {
-                mv.snapshot_state();
             } else if(cmd == "snapshot-stop") {
                 mv.snapshot_stop();
             } else if(cmd == "record-start") {
                 string dir; int format,quality,frames; cin >> dir >> format >> quality>> frames; mv.record_start(dir,format,quality,frames);
-            } else if(cmd == "record-state") {
-                mv.record_state();
             } else if(cmd == "record-stop") {
                 mv.record_stop();
             } else if(cmd == "play") {
                 mv.play();
             } else if(cmd == "pause") {
                 mv.pause();
-            } else if(cmd == "stop") {
-                mv.stop();
             } else if(cmd == "status") {
                 string type; cin >> type; mv.status(type);
             } else if(cmd == "brightness") {
@@ -218,6 +212,8 @@ int main(int argc, char *argv[])
             }
         } while(cmd != "exit");
     } catch(exception& e) {}
+
+    mv.stop();
 
     cerr << "exit" << endl;
     log.close();
