@@ -4,6 +4,8 @@
 #include <fstream>
 using namespace std;
 
+#include <QStandardPaths>
+
 int main(int argc, char *argv[])
 {
     ofstream log;
@@ -11,12 +13,14 @@ int main(int argc, char *argv[])
     MindVision mv;
     string cmd = argv[1];
 
+
     try {
         if(cmd == "list") {
             mv.list();
             return 0;
         } else if(cmd == "open") {
-            log.open("log/" + string(argv[2]) + ".log");
+            auto dir = QStandardPaths::writableLocation(QStandardPaths::TempLocation).toLocal8Bit().data();
+            log.open(string(dir) + "/" + string(argv[2]) + ".log");
             cerr.rdbuf(log.rdbuf());
             mv.open(argv[2]);
         }
@@ -26,7 +30,7 @@ int main(int argc, char *argv[])
             cin >> cmd;
 
             if(cmd == "exposure") {
-                mv.exposure();
+                int full; cin >> full; mv.exposure(full);
             } else if(cmd == "exposure-mode-set") {
                 int value; cin >> value; mv.exposure_mode(value);
             } else if(cmd == "brightness-set") {

@@ -2,6 +2,8 @@
 #include "defectpixelalg.h"
 #include "brightness.h"
 
+#include <QStandardPaths>
+
 MindVision::MindVision() : camera(0)
   , dark_buffer(nullptr)
   , light_buffer(nullptr)
@@ -86,7 +88,7 @@ void MindVision::open(string cameraName) {
     }
 
     status = CameraGetCapability(camera,&capability);
-    cerr << status << " CameraGetCapability" << endl;
+
     if(status != CAMERA_STATUS_SUCCESS) {
         cout << "False " << endl;
         throw runtime_error("相机初始化失败！");
@@ -94,8 +96,6 @@ void MindVision::open(string cameraName) {
 
     if(capability.sIspCapacity.bMonoSensor) status = CameraSetIspOutFormat(camera,CAMERA_MEDIA_TYPE_MONO8);
     else status = CameraSetIspOutFormat(camera,CAMERA_MEDIA_TYPE_RGB8);
-
-    cerr << status << " CameraSetIspOutFormat" << endl;
 
     if(status != CAMERA_STATUS_SUCCESS) {
         cout << "False " << endl;
@@ -117,13 +117,15 @@ void MindVision::run() {
 
     cout << "True " << pipeName << ' ' << endl;
 
+    status_sync(camera_info.acPortType);
+
     while(server.isListening() && !pipeName.empty()) {
         if(!server.waitForNewConnection(1000)) {
             continue;
         }
 
         auto sock = server.nextPendingConnection();
-
+        int i=1;
         while(QLocalSocket::ConnectedState == sock->state() && !pipeName.empty()) {
             if (!sock->waitForReadyRead(1000))
                 continue;
@@ -135,7 +137,6 @@ void MindVision::run() {
             auto status = 0;
 
             status = CameraGetImageBufferPriority(camera,&frameHead,&rawBuffer,2000,CAMERA_GET_IMAGE_PRIORITY_NEWEST);
-            cerr << status << " CameraGetImageBufferPriority" << ios::hex << reinterpret_cast<void*>(rawBuffer) << endl;
 
             if (status == CAMERA_STATUS_SUCCESS) {
                 CameraImageProcess(camera,rawBuffer,rgbBuffer,&frameHead);
@@ -174,7 +175,7 @@ void MindVision::run() {
     server.close();
 }
 
-void MindVision::exposure() {
+void MindVision::exposure(bool full) {
     BOOL            mode = 0;
     int             brightness = 0;
     double          exposureTime = 0;
@@ -182,28 +183,27 @@ void MindVision::exposure() {
     BOOL            flicker = 0;
     int             frequencySel = 0;
     double	        expLineTime = 0; //当前的行曝光时间，单位为us
-
-    auto ret = CameraGetAeState(camera,&mode);
-    cerr << ret << " CameraGetAeState" << endl;//获得相机当前的曝光模式。
-    ret = CameraGetAeTarget(camera,&brightness);
-    cerr << ret << " CameraGetAeTarget" << endl;//获得自动曝光的亮度目标值。
-    ret = CameraGetAntiFlick(camera,&flicker);
-    cerr << ret << " CameraGetAntiFlick" << endl;//获得自动曝光时抗频闪功能的使能状态。
-    ret = CameraGetLightFrequency(camera,&frequencySel);
-    cerr <<  ret << " CameraGetLightFrequency" << endl;//获得自动曝光时，消频闪的频率选择。
-    ret = CameraGetAnalogGain(camera,&analogGain);
-    cerr << ret  << " CameraGetAnalogGain" << endl;//获得图像信号的模拟增益值。
-    ret = CameraGetExposureTime(camera,&exposureTime);
-    cerr << ret << " CameraGetExposureTime" << endl;//获得相机的曝光时间。
-    double exposureRangeMinimum=0,exposureRangeMaximum=0;
-    cerr << CameraGetExposureTimeRange(camera,&exposureRangeMinimum,&exposureRangeMaximum,&expLineTime) << " CameraGetExposureTimeRange" << endl;
-    cerr << ret << " CameraGetExposureLineTime" << endl;
+    double exposureRangeMinimum=0.,exposureRangeMaximum=0.;
+    int uiAnalogGainMin=0,uiAnalogGainMax=0;
+    double exposureRangeMinimum2=0.,exposureRangeMaximum2=0.;
 
     int threshould = 0;
-    ret = CameraGetAeThreshold(camera,&threshould);
-
     int x,y,w,h;
-    cerr << CameraGetAeWindow(camera,&x,&y,&w,&h) << " CameraGetAeWindow" << endl;
+
+    if(full) {
+        CameraGetAeState(camera,&mode);
+        CameraGetAeTarget(camera,&brightness);
+        CameraGetAntiFlick(camera,&flicker);
+        CameraGetLightFrequency(camera,&frequencySel);
+        CameraGetExposureTimeRange(camera,&exposureRangeMinimum,&exposureRangeMaximum,&expLineTime);
+        CameraGetAeThreshold(camera,&threshould);
+        CameraGetAeWindow(camera,&x,&y,&w,&h);
+        CameraGetAeAnalogGainRange(camera,&uiAnalogGainMin,&uiAnalogGainMax);
+        CameraGetAeExposureRange(camera,&exposureRangeMinimum2,&exposureRangeMaximum2);
+    }
+
+    CameraGetAnalogGain(camera,&analogGain);
+    CameraGetExposureTime(camera,&exposureTime);
 
     cout.precision(2);
     cout << "True\n"
@@ -221,59 +221,60 @@ void MindVision::exposure() {
          << (int)(capability.sExposeDesc.uiExposeTimeMax * expLineTime) << ','
          << (int)exposureTime << ','
          << (int)exposureRangeMinimum << ','
-         << (int)exposureRangeMaximum << ",\n"
+         << (int)exposureRangeMaximum << ","
+         << (int)(capability.sExposeDesc.fAnalogGainStep * uiAnalogGainMin * 100.) << ','
+         << (int)(capability.sExposeDesc.fAnalogGainStep * uiAnalogGainMax * 100.) << ','
+         << (int)exposureRangeMinimum2 << ','
+         << (int)exposureRangeMaximum2 << ",\n"
          << x << ',' << y << ',' << w << ',' << h << ','
          << endl;
 }
 
 void MindVision::exposure_mode(int value) {
     CameraSetAeState(camera,value);
-    cout << "True " << endl;
 }
 
 void MindVision::brightness(int value) {
     cerr << CameraSetAeTarget(camera,value) << " CameraSetAeTarget" << endl;
-    cout << "True " << endl;
+
 }
 
 void MindVision::threshold(int value) {
     cerr << CameraSetAeThreshold(camera,value) << " CameraSetAeThreshold" << endl;
-    cout << "True " << endl;
 }
 
 void MindVision::flicker(int value) {
     CameraSetAntiFlick(camera,value);
-    cout << "True " << endl;
+
 }
 
 void MindVision::gain(int value) {
     CameraSetAnalogGain(camera,value / capability.sExposeDesc.fAnalogGainStep / 100.f);
-    cout << "True " << endl;
 }
 
 void MindVision::gain_range(int minimum,int maximum) {
     CameraSetAeAnalogGainRange(camera,minimum / capability.sExposeDesc.fAnalogGainStep / 100.f,maximum / capability.sExposeDesc.fAnalogGainStep / 100.f);
-    cout << "True " << endl;
+
 }
 
 void MindVision::exposure_time(int pos) {
     CameraSetExposureTime(camera,pos);
-    cout << "True " << endl;
+
 }
 
 void MindVision::exposure_time_range(double minimum,double maximum) {
     cerr << CameraSetAeExposureRange(camera,minimum,maximum) << " CameraSetAeExposureRange " << minimum << ',' << maximum << endl;
-    cout << "True " << endl;
+
 }
 
 void MindVision::frequency(int value) {
     CameraSetLightFrequency(camera,value);
-    cout << "True " << endl;
+
 }
 
 void MindVision::exposure_window(int x,int y,int w,int h) {
     CameraSetAeWindow(camera,x,y,w,h);
-    cout << "True" << endl;
+
 }
 
 void MindVision::white_balance() {
@@ -327,7 +328,7 @@ void MindVision::white_balance() {
 
 void MindVision::white_balance_mode(int index) {
     cerr << CameraSetWbMode(camera,index) << " CameraSetWbMode" << endl;
-    cout << "True " << endl;
+
 }
 
 void MindVision::color_temrature(int index) {
@@ -347,42 +348,42 @@ void MindVision::color_temrature(int index) {
         break;
     }
 
-    cout << "True " << endl;
+
 }
 
 void MindVision::once_white_balance() {
     cerr << CameraSetOnceWB(camera) << " CameraSetOnceWB" << endl;
-    cout << "True " << endl;
+
 }
 
 void MindVision::white_balance_window(int x,int y,int w,int h) {
     cerr << CameraSetWbWindow(camera,x,y,w,h) << " CameraSetWbWindow" << endl;
-    cout << "True" << endl;
+
 }
 
 void MindVision::rgb(int r,int g,int b) {
     cerr << CameraSetGain(camera,r,g,b) << " CameraSetGain " << r << ' ' << g << ' ' << b << endl;
-    cout << "True " << endl;
+
 }
 
 void MindVision::saturation(int value) {
     cerr << CameraSetSaturation(camera,value) << " CameraSetSaturation " << value << endl;
-    cout << "True " << endl;
+
 }
 
 void MindVision::monochrome(int enable) {
     cerr << CameraSetMonochrome(camera,enable) << " CameraSetMonochrome" << endl;
-    cout << "True " << endl;
+
 }
 
 void MindVision::inverse(int enable) {
     cerr << CameraSetInverse(camera,enable) << " CameraSetInverse" << endl;
-    cout << "True " << endl;
+
 }
 
 void MindVision::algorithm(int index) {
     cerr << CameraSetBayerDecAlgorithm(camera,ISP_PROCESSSOR_PC,index) << " CameraSetBayerDecAlgorithm" << endl;
-    cout << "True " << endl;
+
 }
 
 void MindVision::lookup_table_mode() {
@@ -394,7 +395,7 @@ void MindVision::lookup_table_mode() {
 
 void MindVision::lookup_table_mode(int index) {
     cerr << CameraSetLutMode(camera,index) << " CameraSetLutMode" << endl;
-    cout << "True " << endl;
+
 }
 
 void MindVision::lookup_tables_for_dynamic() {
@@ -459,12 +460,12 @@ void MindVision::lookup_tables_for_custom(int index) {
 
 void MindVision::gamma(int value) {
     CameraSetGamma(camera,value);
-    cout << "True " << endl;
+
 }
 
 void MindVision::contrast_ratio(int value) {
     CameraSetContrast(camera,value);
-    cout << "True " << endl;
+
 }
 
 void MindVision::transform() {
@@ -494,7 +495,9 @@ void MindVision::transform() {
     vector<unsigned short> x_array(pixels_count),y_array(pixels_count);
     CameraReadDeadPixels(camera,y_array.data(),x_array.data(),&pixels_count);
     stringstream filename;
-    filename << "ipc/" << camera << "-manual-pixels.txt";
+
+    auto dir = QStandardPaths::writableLocation(QStandardPaths::TempLocation).replace('/','\\').toLocal8Bit().data();
+    filename << dir << '/' << camera << "-manual-pixels.txt";
 
     ofstream f;
     f.open(filename.str());
@@ -530,7 +533,7 @@ void MindVision::horizontal_mirror(int hard,int value) {
     } else {
         CameraSetMirror(camera, MIRROR_DIRECTION_HORIZONTAL, value);
     }
-    cout << "True " << endl;
+
 }
 
 void MindVision::vertical_mirror(int hard,int value) {
@@ -539,32 +542,32 @@ void MindVision::vertical_mirror(int hard,int value) {
     } else {
         CameraSetMirror(camera, MIRROR_DIRECTION_VERTICAL, value);
     }
-    cout << "True " << endl;
+
 }
 
 void MindVision::acutance(int value) {
     CameraSetSharpness(camera,value);
-    cout << "True " << endl;
+
 }
 
 void MindVision::noise(int enable) {
     CameraSetNoiseFilter(camera,enable);
-    cout << "True " << endl;
+
 }
 
 void MindVision::noise3d(int enable,int value) {
     CameraSetDenoise3DParams(camera,enable,value,nullptr);
-    cout << "True " << endl;
+
 }
 
 void MindVision::rotate(int value) {
     CameraSetRotate(camera,value);
-    cout << "True " << endl;
+
 }
 
 void MindVision::flat_field_corrent(int enable) {
     cerr << CameraFlatFieldingCorrectSetEnable(camera,enable) << " CameraFlatFieldingCorrectSetEnable" << endl;
-    cout << "True " << endl;
+
 }
 
 void MindVision::flat_field_init(int light) {
@@ -603,23 +606,19 @@ void MindVision::flat_field_init(int light) {
              << status << endl;
         return;
     }
-
-    cout << "True" << endl;
 }
 
 void MindVision::flat_field_params_save(string filepath) {
     cerr << CameraFlatFieldingCorrectSaveParameterToFile(camera,filepath.c_str()) << endl;
-    cout << "True" << endl;
 }
 
 void MindVision::flat_field_params_load(string filepath) {
     cerr << CameraFlatFieldingCorrectLoadParameterFromFile(camera,filepath.c_str()) << endl;
-    cout << "True" << endl;
 }
 
 void MindVision::dead_pixels_correct(int enable) {
     CameraSetCorrectDeadPixel(camera,enable);
-    cout << "True " << endl;
+
 }
 
 void MindVision::dead_pixels(string x_list,string y_list) {
@@ -643,7 +642,6 @@ void MindVision::dead_pixels(string x_list,string y_list) {
     }
 
     cerr << CameraSaveDeadPixels(camera) << " CameraSaveDeadPixels" << endl;
-    cout << "True" << endl;
 }
 
 void MindVision::dead_pixels_analyze_for_bright(int threshold) {
@@ -656,7 +654,8 @@ void MindVision::dead_pixels_analyze_for_bright(int threshold) {
     CameraReleaseImageBuffer(camera,rawBuffer);
 
     stringstream filename;
-    filename << "ipc/" << camera << "-bright-pixels.txt";
+    auto dir = QStandardPaths::writableLocation(QStandardPaths::TempLocation).replace('/','\\').toLocal8Bit().data();
+    filename << dir << "/" << camera << "-bright-pixels.txt";
 
     ofstream f;
     f.open(filename.str());
@@ -683,7 +682,8 @@ void MindVision::dead_pixels_analyze_for_dead(int threshold) {
     CameraReleaseImageBuffer(camera,rawBuffer);
 
     stringstream filename;
-    filename << "ipc/" << camera << "-dead-pixels.txt";
+    auto dir = QStandardPaths::writableLocation(QStandardPaths::TempLocation).replace('/','\\').toLocal8Bit().data();
+    filename << dir << "/" << camera << "-dead-pixels.txt";
 
     ofstream f;
     f.open(filename.str());
@@ -700,7 +700,6 @@ void MindVision::dead_pixels_analyze_for_dead(int threshold) {
 
 void MindVision::undistort(int enable) {
     cerr << CameraSetUndistortEnable(camera,enable) << " CameraSetUndistortEnable" << endl;
-    cout << "True" << endl;
 }
 
 void MindVision::undistory_params(int w,int h,string camera_matrix,string distort_coeffs) {
@@ -713,7 +712,6 @@ void MindVision::undistory_params(int w,int h,string camera_matrix,string distor
     std::transform(m2_begin,end,back_inserter(m2),[](auto v) { return (double)stod(v); });
 
     cerr << CameraSetUndistortParams(camera,w,h,m1.data(),m2.data()) << " CameraSetUndistortParams" << endl;
-    cout << "True" << endl;
 }
 
 void MindVision::video() {
@@ -743,22 +741,20 @@ void MindVision::video() {
 
 void MindVision::frame_rate_speed(int index) {
     CameraSetFrameSpeed(camera,index);
-    cout << "True " << endl;
+
 }
 
 void MindVision::frame_rate_limit(int value) {
     CameraSetFrameRate(camera,value);
-    cout << "True " << endl;
+
 }
 
 void MindVision::video_output_format(int index) {
     cerr << CameraSetMediaType(camera,index) << endl;
-    cout << "True" << endl;
 }
 
 void MindVision::raw_output_range(int value) {
     cerr << CameraSetRawStartBit(camera,value) << " CameraSetRawStartBit " << value << endl;
-    cout << "True" << endl;
 }
 
 void MindVision::resolutions() {
@@ -781,7 +777,7 @@ void MindVision::resolutions() {
 
 void MindVision::resolution(int index) {
     cerr << CameraSetImageResolution(camera,&capability.pImageSizeDesc[index]) << " CameraSetImageResolution " << index << endl;
-    cout << "True " << endl;
+
 }
 
 void MindVision::resolution(int x,int y,int w,int h) {
@@ -808,7 +804,7 @@ void MindVision::resolution(int x,int y,int w,int h) {
     sRoiResolution.uSkipMode = 0;
 
     cerr << CameraSetImageResolution(camera, &sRoiResolution) << " CameraSetImageResolution " << x << ' ' << y << ' ' << w << ' ' << h << endl;
-    cout << "True " << endl;
+
 }
 
 void MindVision::io() {
@@ -837,7 +833,7 @@ void MindVision::io_mode(string type,int index,int value) {
         cerr << CameraSetInPutIOMode(camera,index,value) <<  " CameraSetInPutIOMode " << type << ',' << index <<',' << value << endl;
     else
         cerr << CameraSetOutPutIOMode(camera,index,value) << " CameraSetOutPutIOMode " << type << ',' << index <<',' << value << endl;
-    cout << "True " << endl;
+
 }
 
 void MindVision::io_state(string type,int index,int value) {
@@ -846,7 +842,6 @@ void MindVision::io_state(string type,int index,int value) {
         cout << "False" << endl; return;
     } else
         CameraSetIOStateEx(camera,index,value);
-    cout << "True" << endl;
 }
 
 void MindVision::controls() {
@@ -899,62 +894,60 @@ void MindVision::controls() {
 
 void MindVision::trigger_mode(int value) {
     cerr << CameraSetTriggerMode(camera,value) << " CameraSetTriggerMode " << value << endl;
-    cout << "True " << endl;
-}
+};
 
 void MindVision::once_soft_trigger() {
     CameraSoftTrigger(camera);
-    cout << "True " << endl;
 }
 
 void MindVision::trigger_frames(int value) {
     cerr << CameraSetTriggerCount(camera,value) << " CameraSetTriggerCount " << value << endl;
-    cout << "True" << endl;
+
 }
 
 void MindVision::trigger_delay(unsigned int value) {
     cerr << CameraSetTriggerDelayTime(camera,value) << " CameraSetTriggerDelayTime " << value << endl;
-    cout << "True" << endl;
+
 }
 
 void MindVision::trigger_interval(unsigned int value) {
     cerr << CameraSetExtTrigIntervalTime(camera,value) << " CameraSetExtTrigIntervalTime " << value << endl;
-    cout << "True" << endl;
+
 }
 
 void MindVision::outside_trigger_mode(int value) {
     cerr << CameraSetExtTrigSignalType(camera,value) << " CameraSetExtTrigSignalType " << value << endl;
-    cout << "True" << endl;
+
 }
 
 void MindVision::outside_trigger_debounce(unsigned int value) {
     cerr << CameraSetExtTrigJitterTime(camera,value) << " CameraSetExtTrigJitterTime " << value << endl;
-    cout << "True" << endl;
+
 }
 
 void MindVision::outside_shutter(int index) {
     cerr << CameraSetExtTrigShutterType(camera,index) << " CameraSetExtTrigShutterType " << index << endl;
-    cout << "True" << endl;
+
 }
 
 void MindVision::flash_mode(int value) {
     cerr << CameraSetStrobeMode(camera,value) << " CameraSetStrobeMode " << value << endl;
-    cout << "True" << endl;
+
 }
 
 void MindVision::flash_polarity(int value) {
     CameraSetStrobePolarity(camera,value);
-    cout << "True" << endl;
+
 }
 
 void MindVision::flash_delay(unsigned int value) {
     cerr << CameraSetStrobeDelayTime(camera,value) << " CameraSetStrobeDelayTime " << value << endl;
-    cout << "True" << endl;
+
 }
 
 void MindVision::flash_pulse(unsigned int value) {
     cerr << CameraSetStrobePulseWidth(camera,value) << " CameraSetStrobePulseWidth " << value << endl;
-    cout << "True" << endl;
+
 }
 
 void MindVision::firmware() {
@@ -987,32 +980,26 @@ void MindVision::name() {
 
 void MindVision::rename(string name) {
     cerr << CameraSetFriendlyName(camera,const_cast<char*>(name.c_str())) << " CameraSetFriendlyName" << endl;
-    cout << "True " << endl;
 }
 
 void MindVision::params_reset() {
     cerr << CameraLoadParameter(camera,PARAMETER_TEAM_DEFAULT) << " CameraLoadParameter" << endl;
-    cout << "True " << endl;
 }
 
 void MindVision::params_save(int value) {
     cerr << CameraSaveParameter(camera,value) << " CameraSaveParameter " << value << endl;
-    cout << "True " << endl;
 }
 
 void MindVision::params_load(int value) {
     cerr << CameraLoadParameter(camera,value) << " CameraLoadParameter "<< value << endl;
-    cout << "True " << endl;
 }
 
 void MindVision::params_save_to_file(string filename) {
     cerr << CameraSaveParameterToFile(camera,const_cast<char*>(filename.c_str())) << " CameraSaveParameterToFile " << filename << endl;
-    cout << "True " << endl;
 }
 
 void MindVision::params_load_from_file(string filename) {
     cerr << CameraReadParameterFromFile(camera,const_cast<char*>(filename.c_str())) << " CameraReadParameterFromFile " << filename<< endl;
-    cout << "True " << endl;
 }
 
 void MindVision::snapshot_resolution() {
@@ -1023,7 +1010,6 @@ void MindVision::snapshot_resolution() {
 
 void MindVision::snapshot_resolution(int index) {
     CameraSetResolutionForSnap(camera,&capability.pImageSizeDesc[index]);
-    cout << "True " << endl;
 }
 
 void MindVision::snapshot_start(string dir,int resolution,int format,int period) {
@@ -1036,7 +1022,7 @@ void MindVision::snapshot_start(string dir,int resolution,int format,int period)
     st.interrupt = false;
 
     st.start();
-    cout << "True " << endl;
+
 }
 
 void MindVision::snapshot_state() {
@@ -1046,7 +1032,6 @@ void MindVision::snapshot_state() {
 void MindVision::snapshot_stop() {
     st.interrupt = true;
     st.wait();
-    cout << "True " << endl;
 }
 
 void MindVision::record_start(string dir,int format,int quality,int frames) {
@@ -1066,8 +1051,6 @@ void MindVision::record_start(string dir,int format,int quality,int frames) {
          << endl;
 
     rt.start();
-
-    cout << "True " << endl;
 }
 
 void MindVision::record_state() {
@@ -1078,28 +1061,33 @@ void MindVision::record_stop() {
     rt.interrupt = true;
     rt.wait();
     cerr << CameraStopRecord(camera) << " CameraStopRecord" << endl;
-    cout << "True " << endl;
 }
 
 void MindVision::play() {
     playing = true;
     cerr << CameraPlay(camera) << " CameraPlay"  << endl;
-    cout << "True " << endl;
 }
 
 void MindVision::pause() {
     playing = false;
     cerr << CameraPause(camera) << " CameraPause"  << endl;
-    cout << "True " << endl;
+
 }
 
 void MindVision::stop() {
     playing = false;
     cerr << CameraStop(camera) << " CameraStop"  << endl;
-    cout << "True " << endl;
+
 }
 
 void MindVision::status(string type) {
+    cout << status_string.str();
+    cout.flush();
+
+    status_sync(type);
+}
+
+void MindVision::status_sync(string type) {
     const int IO_CONTROL_DEVICE_TEMPERATURE	= 20;
     const int IO_CONTROL_GET_FRAME_RESEND   = 17;
     const int IO_CONTROL_GET_LINK_SPEED	= 26;
@@ -1139,7 +1127,9 @@ void MindVision::status(string type) {
         char GvspDevTemp[32] = { 0 };
         CameraCommonCall(camera, "get_gvsp_dev_temp()", GvspDevTemp, sizeof(GvspDevTemp));
 
-        cout << "True\n"
+        status_string.clear();
+        status_string.seekp(0);
+        status_string << "True\n"
              << statistic.iCapture << ','
              << captureFPS << ','
              << sensorFPS << ','
@@ -1161,7 +1151,9 @@ void MindVision::status(string type) {
         int iRecover = 0;
         CameraSpecialControl(camera, IO_CONTROL_GET_RECOVER_COUNT, 0, &iRecover);
 
-        cout << "True\n"
+        status_string.clear();
+        status_string.seekp(0);
+        status_string << "True\n"
              << statistic.iCapture << ','
              << captureFPS << ','
              << sensorFPS << ','
@@ -1174,7 +1166,9 @@ void MindVision::status(string type) {
     }
     else
     {
-        cout << "True\n"
+        status_string.clear();
+        status_string.seekp(0);
+        status_string << "True\n"
              << statistic.iCapture << ','
              << captureFPS << ','
              << sensorFPS << ','

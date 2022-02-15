@@ -34,7 +34,7 @@ public:
     void run() override;
 
     //曝光控制
-    void exposure();
+    void exposure(bool full);
     void exposure_mode(int value);
     void brightness(int value);
     void threshold(int value);
@@ -143,6 +143,7 @@ public:
     void play();
     void pause();
 
+    void status_sync(string type);
     void status(string type);
     void brightness();
 
@@ -162,6 +163,9 @@ private:
     unsigned char *light_buffer,*dark_buffer;
 
     bool playing;
+
+    stringstream status_string;
+    mutex m_status_string;
 };
 
 #endif // MINDVISION_H
