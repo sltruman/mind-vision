@@ -154,6 +154,7 @@ private:
         char exposure_status[256] = "\0";
         int record_status = 0;
         int snapshot_status = 0;
+        char _[8];
     } frame_head;
 
     ofstream log;

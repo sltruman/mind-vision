@@ -115,6 +115,7 @@ void MindVision::run() {
 
     QSharedMemory sm0(QString::fromStdString(pipeName + ".0.sm"));
     QSharedMemory& sm = sm0;
+    if(sm.isAttached()) sm.detach();
 
     sm.create(rgbBufferMaxLength);
 
@@ -130,7 +131,7 @@ void MindVision::run() {
         frame_head.num = frame_head.num+1;
         frame_head.width = frameHead.iWidth;
         frame_head.height = frameHead.iHeight;
-        frame_head.bits = frameHead.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? 1 : 3;
+        frame_head.bits = (frameHead.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? 1 : 3);
         frame_head.snapshot_status = st.isRunning();
         frame_head.record_status = rt.isRunning();
 
