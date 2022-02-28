@@ -207,6 +207,14 @@ int main(int argc, char *argv[])
                 string type; cin >> type; mv.status(type);
             } else if(cmd == "brightness") {
                 mv.brightness();
+            } else if(cmd == "fpn-save") {
+                string filepath; cin >> filepath; mv.fpn_save(filepath);
+            } else if(cmd == "fpn-load") {
+                string filepath; cin >> filepath; mv.fpn_load(filepath);
+            } else if(cmd == "fpn-clear") {
+                mv.fpn_clear();
+            } else if(cmd == "fpn") {
+                int enable; cin >> enable; mv.fpn(enable);
             } else {
                 break;
             }

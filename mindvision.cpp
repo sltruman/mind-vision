@@ -295,6 +295,10 @@ void MindVision::white_balance() {
     for(auto i=0;i < capability.iClrTempDesc;i++)
         colorTemplates << capability.pClrTempDesc[i].acDescription << ',';
 
+    constexpr int IO_CONTROL_ENABLE_FPN = 37; // 启用、禁用FPN
+    int fpn = 0;
+    CameraSpecialControl(camera, IO_CONTROL_ENABLE_FPN, 0, &fpn);
+
     cout << "True" << '\n'
          << mode << ','
          << capability.sRgbGainRange.iRGainMin << ',' << capability.sRgbGainRange.iRGainMax << ',' << r << ','
@@ -302,7 +306,7 @@ void MindVision::white_balance() {
          << capability.sRgbGainRange.iBGainMin << ',' << capability.sRgbGainRange.iBGainMax << ',' << b << ','
          << capability.sSaturationRange.iMin << ',' << capability.sSaturationRange.iMax << ',' << saturation << ','
          << monochrome << ',' << inverse << ',' << algorithm << ',' << color_temrature << ','
-         << x << ',' << y << ',' << w << ',' << h << ',' << '\n'
+         << x << ',' << y << ',' << w << ',' << h << ',' << fpn << '\n'
          << colorTemplates.str()
          << endl;
 }
@@ -1177,4 +1181,24 @@ void MindVision::brightness() {
     cout << "True\n"
          << acc_y << ','
          << endl;
+}
+
+void MindVision::fpn_save(string filepath) {
+    constexpr int IO_CONTROL_SAVE_FPN_TO_FILE = 33;     // 把相机里的FPN数据存到文件
+    CameraSpecialControl(camera, IO_CONTROL_SAVE_FPN_TO_FILE, 0, (void*)filepath.c_str());
+}
+
+void MindVision::fpn_load(string filepath) {
+    constexpr int IO_CONTROL_LOAD_FPN_TO_DEVICE = 34;   // 从文件加载FPN数据到相机里
+    CameraSpecialControl(camera, IO_CONTROL_LOAD_FPN_TO_DEVICE, 0, (void*)filepath.c_str());
+}
+
+void MindVision::fpn_clear() {
+    constexpr int IO_CONTROL_DELETE_FPN = 35;           // 删除相机里的FPN数据
+    CameraSpecialControl(camera, IO_CONTROL_DELETE_FPN, 0, NULL);
+}
+
+void MindVision::fpn(int e) {
+    constexpr int IO_CONTROL_ENABLE_FPN = 37; // 启用、禁用FPN
+    CameraSpecialControl(camera, IO_CONTROL_ENABLE_FPN, e, NULL);
 }

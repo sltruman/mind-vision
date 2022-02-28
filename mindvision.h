@@ -55,6 +55,7 @@ public:
     void inverse(int enable);
     void algorithm(int index);
 
+
     //查表变换
     void lookup_table_mode();
     void lookup_table_mode(int index);
@@ -143,6 +144,12 @@ public:
     void status_sync(string type);
     void status(string type);
     void brightness();
+
+    //fpn
+    void fpn_save(string filepath);
+    void fpn_load(string filepath);
+    void fpn_clear();
+    void fpn(int);
 
 private:
     struct {
