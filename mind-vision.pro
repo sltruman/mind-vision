@@ -6,10 +6,12 @@ CONFIG -= app_bundle
 # In order to do so, uncomment the following line.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
-win32:INCLUDEPATH += "C:\Program Files (x86)\MindVision\Demo\VC++\Include"
+win32:INCLUDEPATH += "C:\Program Files (x86)\MindVision\Demo\VC++\Include" \
+                     "pdcurses\include"
 
 unix:LIBS += -lMVSDK
-win32:LIBS += -L"C:\Program Files (x86)\MindVision\SDK\X64" -lMVCAMSDK_X64
+win32:LIBS += -L"C:\Program Files (x86)\MindVision\SDK\X64" -lMVCAMSDK_X64 \
+              -L"pdcurses\lib" -lpdcurses
 
 HEADERS += \
     brightness.h \

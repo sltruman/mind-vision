@@ -3,7 +3,7 @@
 #include "brightness.h"
 
 #include <QStandardPaths>
-#include <QSharedMemory>
+
 
 MindVision::MindVision() : camera(0)
   , dark_buffer(nullptr)
@@ -18,7 +18,6 @@ MindVision::~MindVision()
     if(!camera) return;
 
     pipeName.clear();
-    this->wait();
     CameraUnInit(camera);
 
     delete dark_buffer;
@@ -105,48 +104,44 @@ void MindVision::open(string cameraName) {
 
     pipeName = cameraName;
 
-    start();
-}
-
-void MindVision::run() {
     auto rgbBufferMaxLength = sizeof(frame_head) + capability.sResolutionRange.iWidthMax * capability.sResolutionRange.iHeightMax * (capability.sIspCapacity.bMonoSensor ? 1 : 3);
+    this->status(camera_info.acPortType);
 
-    status(camera_info.acPortType);
-
-    QSharedMemory sm0(QString::fromStdString(pipeName + ".0.sm"));
-    QSharedMemory& sm = sm0;
+    sm.setKey(QString::fromStdString(pipeName + ".0.sm"));
     if(sm.isAttached()) sm.detach();
-
     sm.create(rgbBufferMaxLength);
 
     cout << "True " << pipeName << ' ' << endl;
+}
 
-    while(!pipeName.empty()) {
-        tSdkFrameHead frameHead;
-        unsigned char* rawBuffer = nullptr;
+void MindVision::frame() {
+    if(pipeName.empty()) return;
 
-        if (CAMERA_STATUS_SUCCESS != CameraGetImageBufferPriority(camera,&frameHead,&rawBuffer,2000,CAMERA_GET_IMAGE_PRIORITY_NEWEST))
-            continue;
+    tSdkFrameHead frameHead;
+    unsigned char* rawBuffer = nullptr;
 
-        frame_head.num = frame_head.num+1;
-        frame_head.width = frameHead.iWidth;
-        frame_head.height = frameHead.iHeight;
-        frame_head.bits = (frameHead.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? 1 : 3);
-        frame_head.snapshot_status = st.isRunning();
-        frame_head.record_status = rt.isRunning();
+    if (CAMERA_STATUS_SUCCESS != CameraGetImageBufferPriority(camera,&frameHead,&rawBuffer,2000,CAMERA_GET_IMAGE_PRIORITY_NEWEST))
+        return;
 
-        sm.lock();
+    frame_head.num = frame_head.num+1;
+    frame_head.width = frameHead.iWidth;
+    frame_head.height = frameHead.iHeight;
+    frame_head.bits = (frameHead.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? 1 : 3);
+    frame_head.snapshot_status = st.isRunning();
+    frame_head.record_status = rt.isRunning();
 
-        auto frameHeadBuffer = reinterpret_cast<unsigned char*>(sm.data());
-        auto rgbBuffer = frameHeadBuffer + sizeof(frame_head);
+    sm.lock();
 
-        memcpy(frameHeadBuffer,&frame_head,sizeof(frame_head));
-        CameraImageProcess(camera,rawBuffer,rgbBuffer,&frameHead);
-        CameraFlipFrameBuffer(rgbBuffer,&frameHead,1);
-        sm.unlock();
+    auto frameHeadBuffer = reinterpret_cast<unsigned char*>(sm.data());
+    auto rgbBuffer = frameHeadBuffer + sizeof(frame_head);
 
-        CameraReleaseImageBuffer(camera,rawBuffer);
-    }
+    memcpy(frameHeadBuffer,&frame_head,sizeof(frame_head));
+    CameraImageProcess(camera,rawBuffer,rgbBuffer,&frameHead);
+    CameraFlipFrameBuffer(rgbBuffer,&frameHead,1);
+
+    sm.unlock();
+
+    CameraReleaseImageBuffer(camera,rawBuffer);
 }
 
 void MindVision::exposure(bool full) {

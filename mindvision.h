@@ -20,7 +20,9 @@
 #include <mutex>
 using namespace std;
 
-class MindVision : public QThread
+#include <QSharedMemory>
+
+class MindVision
 {
 public:
     MindVision();
@@ -28,7 +30,7 @@ public:
     void list();
     void open(string cameraName);
     void stop();
-    void run() override;
+    void frame();
 
     //曝光控制
     void exposure(bool full);
@@ -171,6 +173,8 @@ private:
     int camera;
     tSdkCameraCapbility capability;
     tSdkCameraDevInfo camera_info;
+
+    QSharedMemory sm;
 
     SnapshotThread st;
     RecordThread rt;
