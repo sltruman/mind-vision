@@ -18,11 +18,15 @@ int main(int argc, char *argv[])
         mv.list();
         return 0;
     } else if(cmd == "open") {
-        auto dir = QStandardPaths::writableLocation(QStandardPaths::TempLocation).toLocal8Bit().data();
-        log.open(string(dir) + "/" + string(argv[2]) + ".log");
-        cerr.rdbuf(log.rdbuf());
-        mv.open(argv[2]);
-        cmd.clear();
+        try {
+            auto dir = QStandardPaths::writableLocation(QStandardPaths::TempLocation).toLocal8Bit().data();
+            log.open(string(dir) + "/" + string(argv[2]) + ".log");
+            cerr.rdbuf(log.rdbuf());
+            mv.open(argv[2]);
+            cmd.clear();
+        } catch(...) {
+            return 1;
+        }
     } else {
         return 0;
     }
@@ -219,9 +223,118 @@ int main(int argc, char *argv[])
             mv.fpn_clear();
         } else if(cmd == "fpn") {
             int enable; cin >> enable; mv.fpn(enable);
-        } else {
-            cout << "True" << endl
-                 << "hello world!" << endl;
+        }
+
+        if(cmd == "infrared-thermometry") {
+            int index; cin >> index; mv.infrared_thermometry(index);
+        } else if(cmd == "infrared-color") {
+            int index; cin >> index; mv.infrared_color(index);
+        } else if(cmd == "infrared-display") {
+            int index; cin >> index; mv.infrared_display(index);
+        } else if(cmd == "infrared-shutter") {
+            int value; cin >> value; mv.infrared_shutter(value);
+        } else if(cmd == "infrared-cool") {
+            int value; cin >> value; mv.infrared_cool(value);
+        } else if(cmd == "infrared-emissivity") {
+            int value; cin >> value; mv.infrared_emissivity(value);
+        } else if(cmd == "infrared-sharpen") {
+            int value; cin >> value; mv.infrared_sharpen(value);
+        } else if(cmd == "infrared-dde") {
+            int value; cin >> value; mv.infrared_dde(value);
+        } else if(cmd == "infrared-exposure") {
+            int value; cin >> value; mv.infrared_exposure(value);
+        } else if(cmd == "infrared-status") {
+            int value; cin >> value; mv.infrared_status(value);
+        } else if(cmd == "infrared-manual") {
+            bool checked;short value; cin >> checked >> value; mv.infrared_manual(checked,value);
+        } else if(cmd == "infrared-temperature-check") {
+            mv.infrared_temperature_check();
+        } else if(cmd == "infrared-stop-temperature-check") {
+            bool checked; cin >> checked; mv.infrared_temperature_check_stop(checked);
+        } else if(cmd == "infrared_factory_check") {
+            mv.infrared_factory_check();
+        } else if(cmd == "infrared_factory_check_temperature_check_stop") {
+            mv.infrared_factory_check_temperature_check_stop();
+        } else if(cmd == "infrared-shutter-temperature-raise-sample") {
+            bool checked; cin >> checked; mv.infrared_shutter_temperature_raise_sample(checked);
+        } else if(cmd == "infrared-factory-check-detect") {
+            bool checked; cin >> checked; mv.infrared_factory_check_detect(checked);
+        } else if(cmd == "infrared-response-rate-sample") {
+            bool checked; cin >> checked; mv.infrared_response_rate_sample(checked);
+        } else if(cmd == "infrared_temperature_curve_sample") {
+            bool checked; cin >> checked; mv.infrared_temperature_curve_sample(checked);
+        } else if(cmd == "infrared_frame_temp_cnt") {
+            int value; cin >> value; mv.infrared_frame_temp_cnt(value);
+        } else if(cmd == "infrared_factory_check_exposure") {
+            int value; cin >> value; mv.infrared_factory_check_exposure(value);
+        } else if(cmd == "infrared_factory_check") {
+            mv.infrared_factory_check();
+        } else if(cmd == "infrared_sample_path") {
+            string path; cin >> path; mv.infrared_sample_path(path);
+        } else if(cmd == "infrared_params_status") {
+            mv.infrared_params_status();
+        } else if(cmd == "infrared_response_rate_start") {
+            int value; string path; cin >> value >> path; mv.infrared_response_rate_start(value,path);
+        } else if(cmd == "infrared_response_rate_status") {
+            mv.infrared_response_rate_status();
+        } else if(cmd == "infrared_response_rate_stop") {
+            mv.infrared_response_rate_stop();
+        } else if(cmd == "infrared_load_response_rate_file") {
+            string path, path2; cin >> path >> path2; mv.infrared_load_response_rate_file(path,path2);
+        } else if(cmd == "infrared_cover_start") {
+            int value; string path; cin >> value >> path; mv.infrared_cover_start(value,path);
+        } else if(cmd == "infrared_cover_status") {
+            mv.infrared_cover_status();
+        } else if(cmd == "infrared_cover_stop") {
+            mv.infrared_cover_stop();
+        } else if(cmd == "infrared_load_cover_file") {
+            string path, path2; cin >> path >> path2; mv.infrared_load_cover_file(path,path2);
+        } else if(cmd == "infrared_save_config") {
+            int count;
+            cin >> count;
+            vector<string> filenames;
+            for(int i=0;i<count;i++) {
+                string filename; cin >> filename;
+                filenames.emplace_back(filename);
+            }
+
+            mv.infrared_save_config(filenames);
+        } else if(cmd == "infrared_delete_config") {
+            mv.infrared_delete_config();
+        } else if(cmd == "infrared_cmd") {
+            string cmd;
+            getline(cin,cmd);
+            mv.infrared_cmd(cmd);
+        } else if(cmd == "infrared_osd") {
+            bool checked; cin >> checked; mv.infrared_osd(checked);
+        } else if(cmd == "infrared_temperature_display") {
+            bool checked; cin >> checked; mv.infrared_temperature_display(checked);
+        } else if(cmd == "infrared_temperature_roi_status") {
+            int value; cin >> value; mv.infrared_temperature_roi_status(value);
+        } else if(cmd == "infrared_roi") {
+            bool checked;int index,user_width_start,user_width_number,user_high_start,user_high_number,user_roi_emissivity;
+            cin >> checked >> index >> user_width_start >> user_width_number >> user_high_start >> user_high_number >> user_roi_emissivity;
+            mv.infrared_roi(checked,index,user_width_start,user_width_number,user_high_start,user_high_number,user_roi_emissivity);
+        } else if(cmd == "infrared_color_map") {
+            bool checked;int low,high; cin >> checked >> low >> high; mv.infrared_color_map(checked,low,high);
+        } else if(cmd == "infrared_blackbody_calibrate") {
+            bool checked;int blackbody_temprature,user_width_start,user_width_number,user_high_start,user_high_number;
+            cin >> checked >> blackbody_temprature >> user_width_start >> user_width_number >> user_high_start >> user_high_number;
+            mv.infrared_blackbody_calibrate(checked,blackbody_temprature,user_width_start,user_width_number,user_high_start,user_high_number);
+        } else if(cmd == "infrared_temperature_compensation") {
+            int value; cin >> value; mv.infrared_temperature_compensation(value);
+        } else if(cmd == "infrared_distance_compensation") {
+            int value; cin >> value; mv.infrared_distance_compensation(value);
+        } else if(cmd == "infrared_humidity_compensation") {
+            int value; cin >> value; mv.infrared_humidity_compensation(value);
+        } else if(cmd == "infrared_high_warm") {
+            bool checked;int blackbody_temprature;
+            cin >> checked >> blackbody_temprature;
+            mv.infrared_high_warm(checked,blackbody_temprature);
+        } else if(cmd == "infrared_low_warm") {
+            bool checked;int blackbody_temprature;
+            cin >> checked >> blackbody_temprature;
+            mv.infrared_low_warm(checked,blackbody_temprature);
         }
 
         cmd.clear();

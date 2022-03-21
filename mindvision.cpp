@@ -1,16 +1,19 @@
 ﻿#include "mindvision.h"
 #include "defectpixelalg.h"
 #include "brightness.h"
+#include "GF120.h"
 
 #include <QStandardPaths>
-
+#include <QSettings>
 
 MindVision::MindVision() : camera(0)
   , dark_buffer(nullptr)
   , light_buffer(nullptr)
   , playing(false)
 {
-    cerr << CameraSdkInit(0) << " CameraSdkInit" << endl;    //sdk初始化  0 English 1中文
+    QSettings settings("MindVision","Example");
+    CameraSdkInit("zh" == settings.value("language","zh"));    //sdk初始化  0 English 1中文
+
 }
 
 MindVision::~MindVision()
@@ -110,6 +113,22 @@ void MindVision::open(string cameraName) {
     sm.setKey(QString::fromStdString(pipeName + ".0.sm"));
     if(sm.isAttached()) sm.detach();
     sm.create(rgbBufferMaxLength);
+
+    infrared_sm.setKey(QString::fromStdString(pipeName + ".infrared.sm"));
+    if(infrared_sm.isAttached()) infrared_sm.detach();
+    infrared_sm.create(sizeof(GF120_get_param));
+
+    infrared_params_sm.setKey(QString::fromStdString(pipeName + ".infrared-params.sm"));
+    if(infrared_params_sm.isAttached()) infrared_params_sm.detach();
+    infrared_params_sm.create(sizeof(GF120_set_param_t));
+    pGF120_set_param = reinterpret_cast<GF120_set_param_t*>(infrared_params_sm.data());
+
+    infrared_temperature_roi_sm.setKey(QString::fromStdString(pipeName + ".infrared_temperature_roi.sm"));
+    if(infrared_temperature_roi_sm.isAttached()) infrared_temperature_roi_sm.detach();
+    infrared_temperature_roi_sm.create(sizeof(GF120_roi_temp));
+
+
+    parameter_init();
 
     cout << "True " << pipeName << ' ' << endl;
 }
@@ -213,7 +232,6 @@ void MindVision::exposure_mode(int value) {
 
 void MindVision::brightness(int value) {
     cerr << CameraSetAeTarget(camera,value) << " CameraSetAeTarget" << endl;
-
 }
 
 void MindVision::threshold(int value) {
@@ -1196,4 +1214,390 @@ void MindVision::fpn_clear() {
 void MindVision::fpn(int e) {
     constexpr int IO_CONTROL_ENABLE_FPN = 37; // 启用、禁用FPN
     CameraSpecialControl(camera, IO_CONTROL_ENABLE_FPN, e, NULL);
+}
+
+void MindVision::infrared_thermometry(int index) {
+    GF120_set_param.temp_mode = index;
+    CameraSpecialControl(camera, SET_TEMP_MODE,GF120_set_param.temp_mode,0);
+}
+
+void MindVision::infrared_color(int index)
+{
+    GF120_set_param.color_mode = index;
+    CameraSpecialControl(camera, SET_COLOR_MODE,GF120_set_param.color_mode,0);
+}
+
+void MindVision::infrared_display(int index) {
+    if(index == IMAGE_RGB888_ENABLE)
+    {
+        CameraSetMediaType(camera,IMAGE_RGB888_ENABLE);                  //伪彩色
+        CameraSetIspOutFormat(camera, CAMERA_MEDIA_TYPE_RGB8);           //显示格式为RGB8
+    }
+    else if(index == IMAGE_TEMP_ENABLE)
+    {
+        CameraSetMediaType(camera,IMAGE_TEMP_ENABLE);                    //温度数据
+        CameraSetIspOutFormat(camera, CAMERA_MEDIA_TYPE_MONO8);          //MONO16显示高8bit 格式为MONO8
+    }
+    else if(index == IMAGE_RGB888_TEMP)
+    {
+        CameraSetMediaType(camera,IMAGE_RGB888_TEMP);                    //伪彩色 + 温度数据
+        CameraSetIspOutFormat(camera, CAMERA_MEDIA_TYPE_RGB8);           //显示格式为RGB8
+    }
+}
+
+void MindVision::infrared_shutter(int checked) {
+    GF120_set_param.shutter_on = checked;
+    CameraSpecialControl(camera, SET_SHUTTER_MODE,GF120_set_param.shutter_on,0);
+}
+
+void MindVision::infrared_cool(int checked) {
+    GF120_set_param.cold_mode = checked;
+    CameraSpecialControl(camera, SET_COLD_MODE,GF120_set_param.cold_mode,0);
+}
+
+void MindVision::infrared_emissivity(int value) {
+    GF120_set_param.user_emissivity = value;			//设置的发射率
+    CameraSpecialControl(camera, SET_USER_EMISSIVITY,GF120_set_param.user_emissivity,0);
+}
+
+void MindVision::infrared_sharpen(int value) {
+    GF120_set_param.sharpen_grade = value;				//锐化等级 设置我0 不锐化
+    CameraSpecialControl(camera, SET_SHARPEN_GRADE,GF120_set_param.sharpen_grade,0);
+}
+
+void MindVision::infrared_dde(int value) {
+    GF120_set_param.dde_grade = value;				//锐化等级 设置我0 不锐化
+    CameraSpecialControl(camera, SET_DDE_GRADE,GF120_set_param.dde_grade,0);
+}
+
+void MindVision::infrared_exposure(int value)
+{
+    if(GF120_set_param.sample_mode == RESPONSE_SAMPLE_MODE) {
+       GF120_set_param.exposure_time = value;
+       CameraSpecialControl(camera, SET_EXPOSURE_TIME,value,0);
+    }
+}
+
+
+void MindVision::infrared_factory_check_exposure(int value)
+{
+    CameraSpecialControl(camera, SET_EXPOSURE_TIME,value,0);
+}
+
+
+void MindVision::infrared_status(bool output) {
+    //判断相机的名称
+    auto gf120_enc = 0;
+    if(strstr(camera_info.acProductName,"MV-GF120-3516") != 0)
+        gf120_enc = 1;
+
+    char cmd_buff[64];
+    char result[512];
+    if(gf120_enc)
+    {
+        memset(cmd_buff,0x0,sizeof(cmd_buff));
+        sprintf(cmd_buff,"get_gf120_status()");
+        CameraCommonCall(camera,cmd_buff,result,512);
+        sscanf(result,"%s %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
+               &GF120_get_param.gf120_dev_version,
+               &GF120_get_param.gst417m_temp,
+               &GF120_get_param.gst417m_tec_temp,
+               &GF120_get_param.outside_temp,
+               &GF120_get_param.shutter_temp,
+               &GF120_get_param.gst417m_ctia,
+               &GF120_get_param.low_temp,
+               &GF120_get_param.low_temp_width,
+               &GF120_get_param.low_temp_hight,
+               &GF120_get_param.high_temp,
+               &GF120_get_param.high_temp_width,
+               &GF120_get_param.high_temp_hight,
+               &GF120_get_param.center_temp,
+               &GF120_get_param.user_temp,
+               &GF120_get_param.ad_value,
+               &GF120_get_param.diff_ad_value,
+               &GF120_get_param.diff_temp_value,
+               &GF120_get_param.calibration_high_temp,
+               &GF120_get_param.calibration_low_temp,
+               &GF120_get_param.gst417m_frame_cnt,
+               &GF120_get_param.gst417m_frame_rate
+               );
+    }
+    else
+    {
+        CameraSpecialControl(camera, GET_GF120_PARAM,0,&GF120_get_param);
+    }
+
+    infrared_sm.lock();
+    memcpy(infrared_sm.data(),&GF120_get_param,sizeof(GF120_get_param));
+    infrared_sm.unlock();
+
+    if(output) {
+        cout << "True" <<endl;
+    }
+}
+
+void MindVision::infrared_manual(bool checked,short value) {
+    GF120_set_param.manual_temp = value;
+    if(checked)
+    {
+        GF120_set_param.manual_mode = 1;
+        CameraSpecialControl(camera, SET_MANUAL_MODE,GF120_set_param.manual_mode,&GF120_set_param.manual_temp);
+    }
+    else
+    {
+        GF120_set_param.manual_mode = 0;
+        CameraSpecialControl(camera, SET_MANUAL_MODE,GF120_set_param.manual_mode,&GF120_set_param.manual_temp);
+    }
+}
+
+void MindVision::infrared_temperature_check() {
+    CameraSpecialControl(camera, SET_TEMP_CHECK,0,0);
+}
+
+void MindVision::infrared_temperature_check_stop(bool checked) {
+    GF120_set_param.stop_correct = checked;
+    CameraSpecialControl(camera, SET_STOP_CORRECT,GF120_set_param.stop_correct,0);
+}
+
+void MindVision::infrared_factory_check_temperature_check_stop() {
+    CameraSpecialControl(camera, SET_STOP_CORRECT,1,0);
+}
+
+void MindVision::infrared_shutter_temperature_raise_sample(bool checked) {
+    GF120_set_param.sample_mode = checked ? SHUTTER_TEMP_SAMPLE_MODE : NO_SAMPLE_MODE;
+    CameraSpecialControl(camera, SET_SAMPLE_MODE,GF120_set_param.sample_mode,0);
+}
+
+void MindVision::infrared_factory_check_detect(bool checked) {
+    GF120_set_param.frame_temp_cnt = 10;
+    CameraSpecialControl(camera, SET_FRAME_CAL,GF120_set_param.frame_temp_cnt,0);
+    CameraSpecialControl(camera, SET_FACTORY_CHECK,checked,0);
+}
+
+void MindVision::infrared_response_rate_sample(bool checked) {
+    GF120_set_param.sample_mode = checked ? RESPONSE_SAMPLE_MODE : NO_SAMPLE_MODE;
+    CameraSpecialControl(camera, SET_SAMPLE_MODE,GF120_set_param.sample_mode,0);
+}
+
+void MindVision::infrared_temperature_curve_sample(bool checked) {
+    GF120_set_param.sample_mode = checked ? TEMP_SAMPLE_MODE : NO_SAMPLE_MODE;
+    CameraSpecialControl(camera, SET_SAMPLE_MODE,GF120_set_param.sample_mode,0);
+}
+
+
+void MindVision::infrared_frame_temp_cnt(int value) {
+    GF120_set_param.frame_temp_cnt = 10;
+    CameraSpecialControl(camera, SET_FRAME_CAL,GF120_set_param.frame_temp_cnt,0);
+}
+
+void MindVision::infrared_factory_check() {
+    GF120_set_param.sample_mode = FACTORY_SAMPLE_MODE;
+    CameraSpecialControl(camera, SET_SAMPLE_MODE,GF120_set_param.sample_mode,0);
+}
+
+void MindVision::infrared_params_status() {
+    infrared_params_sm.lock();
+    memcpy(infrared_params_sm.data(),&GF120_set_param,sizeof(GF120_set_param));
+    infrared_params_sm.unlock();
+}
+
+void MindVision::infrared_sample_path(string path) {
+
+}
+
+void MindVision::infrared_response_rate_start(int value,string path) {
+    CameraSpecialControl(camera, SET_RESPONSE_RATE_START,value,&path);
+}
+
+void MindVision::infrared_response_rate_status() {
+    auto gf120_enc = 0;
+    if(strstr(camera_info.acProductName,"MV-GF120-3516") != 0)
+        gf120_enc = 1;
+
+    if(gf120_enc == 0)
+       CameraSpecialControl(camera, GET_RESPONSE_RATE_STATUS,0,&rt);
+}
+
+void MindVision::infrared_response_rate_stop() {
+    CameraSpecialControl(camera, SET_RESPONSE_RATE_STOP,GF120_set_param.collect_response_temp,0);
+}
+
+void MindVision::infrared_load_response_rate_file(string path,string path2) {
+    memset(GF120_set_param.low_response_file,0x00,sizeof(GF120_set_param.low_response_file));
+    sprintf(GF120_set_param.low_response_file,"%s",path.c_str());
+
+    memset(GF120_set_param.high_response_file,0x00,sizeof(GF120_set_param.high_response_file));
+    sprintf(GF120_set_param.high_response_file,"%s",path2.c_str());
+
+    CameraSpecialControl(camera, SET_LOAD_RESPONSE_FILE,0,&GF120_set_param.low_response_file);
+}
+
+void MindVision::infrared_cover_start(int value,string file_path) {
+    CameraSpecialControl(camera, SET_COVER_START,value,&file_path);
+}
+
+void MindVision::infrared_cover_status() {
+    auto rt = 0;
+    CameraSpecialControl(camera, GET_COVER_STATUS,0,&rt);
+}
+
+void MindVision::infrared_cover_stop() {
+    CameraSpecialControl(camera, SET_COVER_STOP,GF120_set_param.collect_cover_temp,0);
+}
+
+void MindVision::infrared_load_cover_file(string path,string path2) {
+    memset(GF120_set_param.low_cover_file,0x00,sizeof(GF120_set_param.low_cover_file));
+    sprintf(GF120_set_param.low_cover_file,"%s",path.c_str());
+
+    memset(GF120_set_param.low_cover_file,0x00,sizeof(GF120_set_param.low_cover_file));
+    sprintf(GF120_set_param.low_cover_file,"%s",path2.c_str());
+
+    CameraSpecialControl(camera, SET_LOAD_COVER_FILE,0,&GF120_set_param.low_cover_file);
+}
+
+void MindVision::infrared_save_config(vector<string> filenames) {
+    CameraSpecialControl(camera, SET_WRITE_CONFIG_FILES, 0, filenames.data());
+}
+
+void MindVision::infrared_delete_config() {
+    CameraSpecialControl(camera, SET_WRITE_CONFIG_FILES, 0, NULL);
+}
+
+void MindVision::infrared_cmd(string cmd) {
+    char result[64];
+    CameraCommonCall(camera,cmd.c_str(),result,64);
+}
+
+void MindVision::infrared_osd(bool checked) {
+    GF120_set_param.osd_enable = checked;
+    CameraSpecialControl(camera, SET_OSD_ENABLE,GF120_set_param.osd_enable,0);
+}
+
+void MindVision::infrared_temperature_display(bool checked) {
+    GF120_set_param.temp_display_enable = checked;
+    if(checked)
+    {
+        GF120_set_param.osd_enable = 1;
+        CameraSpecialControl(camera, SET_OSD_ENABLE,GF120_set_param.osd_enable,0);
+    }
+    CameraSpecialControl(camera, SET_OSD_TEMP_DISPLAY,GF120_set_param.temp_display_enable,0);
+}
+
+void MindVision::infrared_temperature_roi_status(bool output) {
+    infrared_temperature_roi_sm.lock();
+    memcpy(infrared_temperature_roi_sm.data(),&GF120_roi_temp,sizeof(GF120_roi_temp));
+    infrared_temperature_roi_sm.unlock();
+
+    if(output) {
+        cout << "True" <<endl;
+    }
+}
+
+void MindVision::infrared_roi(bool checked,int index,int user_width_start,int user_width_number,int user_high_start,int user_high_number,int user_roi_emissivity) {
+    GF120_roi_temp[index].user_roi_enable = checked ? 1 : 0;
+
+    GF120_roi_temp[index].user_width_start = user_width_start;
+    GF120_roi_temp[index].user_width_number = user_width_number;
+    GF120_roi_temp[index].user_high_start = user_high_start;
+    GF120_roi_temp[index].user_high_number = user_high_number;
+    GF120_roi_temp[index].user_roi_emissivity = user_roi_emissivity;
+
+    char cmd_buff[64];
+    char result[64];
+    memset(cmd_buff,0x0,sizeof(cmd_buff));
+    sprintf(cmd_buff,"set_user_roi_pos(%d %d %d %d %d %d)",index+1,user_width_start,user_high_start,user_width_number,user_high_number, user_roi_emissivity);
+    printf("set_user_roi_pos buff:%s \r\n",cmd_buff);
+    CameraCommonCall(camera,cmd_buff,NULL,0);
+
+    memset(cmd_buff,0x0,sizeof(cmd_buff));
+    sprintf(cmd_buff,"get_user_roi_pos(%d)",index+1);
+    printf("get_user_roi_pos buff:%s \r\n",cmd_buff);
+    memset(result,0x0,sizeof(result));
+    CameraCommonCall(camera,cmd_buff,result,64);
+    printf("get_user_roi_pos result:%s \r\n",result);
+
+    memset(cmd_buff,0x0,sizeof(cmd_buff));
+    sprintf(cmd_buff,"set_user_roi_enable(%d %s)",index+1,GF120_roi_temp[index].user_roi_enable ? "true":"flase");
+    printf("set_user_roi_enable buff:%s \r\n",cmd_buff);
+    CameraCommonCall(camera,cmd_buff,NULL,0);
+
+    memset(cmd_buff,0x0,sizeof(cmd_buff));
+    sprintf(cmd_buff,"get_user_roi_enable(%d)",index+1);
+    printf("get_user_roi_enable buff:%s \r\n",cmd_buff);
+    memset(result,0x0,sizeof(result));
+    CameraCommonCall(camera,cmd_buff,result,64);
+    printf("get_user_roi_enable result:%s \r\n",result);
+}
+
+
+void MindVision::infrared_blackbody_calibrate(bool checked,int blackbody_temprature,int user_width_start,int user_width_end,int user_high_start,int user_high_end) {
+    GF120_set_param.GF120_calibration.user_calibration_enable = checked;
+    GF120_set_param.GF120_calibration.user_calibration_temp = blackbody_temprature*100;
+    GF120_set_param.GF120_calibration.user_width_start = user_width_start;
+    GF120_set_param.GF120_calibration.user_width_end = user_width_end;
+    GF120_set_param.GF120_calibration.user_high_start = user_high_start;
+    GF120_set_param.GF120_calibration.user_high_end = user_high_end;
+    CameraSpecialControl(camera, SET_CALIBRATION_ROI,0,&GF120_set_param.GF120_calibration);
+
+    //取消黑体炉标定 马上进行一次校正
+    if(GF120_set_param.GF120_calibration.user_calibration_enable == 0)
+    {
+        CameraSpecialControl(camera, SET_TEMP_CHECK,0,0);
+    }
+}
+
+
+void MindVision::infrared_color_map(bool checked,int low,int high) {
+    GF120_set_param.GF120_color.user_color_enable = checked;
+    if(checked)
+    {
+        GF120_set_param.GF120_color.user_color_low= low;
+        GF120_set_param.GF120_color.user_color_high = high;
+        CameraSpecialControl(camera, SET_COLOR_PART,0,&GF120_set_param.GF120_color);
+    }
+    else
+    {
+         CameraSpecialControl(camera, SET_COLOR_PART,0,&GF120_set_param.GF120_color);
+    }
+}
+
+void MindVision::infrared_temperature_compensation(int value) {
+    GF120_set_param.user_compensate_temp = value;
+    GF120_set_param.compensate_temp = GF120_set_param.user_compensate_temp + GF120_set_param.humidity_compensate_temp;
+    CameraSpecialControl(camera, SET_COMPENSATE_TEMP,GF120_set_param.user_compensate_temp,0);
+}
+
+void MindVision::infrared_distance_compensation(int value) {
+    GF120_set_param.distance_compensate_temp = value;
+    CameraSpecialControl(camera, SET_DISTANCE_COMPENSATE_TEMP,GF120_set_param.distance_compensate_temp,0);
+}
+
+void MindVision::infrared_humidity_compensation(int value) {
+    GF120_set_param.humidity_compensate_temp = value;
+    GF120_set_param.compensate_temp = GF120_set_param.user_compensate_temp + GF120_set_param.humidity_compensate_temp;
+    CameraSpecialControl(camera, SET_COMPENSATE_TEMP,GF120_set_param.compensate_temp,0);
+}
+
+void MindVision::infrared_high_warm(bool checked,int temperature) {
+    if(checked)
+    {
+        GF120_set_param.high_temp_warm_temp = temperature;
+        GF120_set_param.high_temp_warm_enable = 1;
+    }
+    else
+    {
+        GF120_set_param.high_temp_warm_enable = 0;
+    }
+}
+
+void MindVision::infrared_low_warm(bool checked,int temperature) {
+    if(checked)
+    {
+        GF120_set_param.low_temp_warm_temp = temperature;
+        GF120_set_param.low_temp_warm_enable = 1;
+    }
+    else
+    {
+        GF120_set_param.low_temp_warm_enable = 0;
+    }
 }

@@ -14,6 +14,7 @@ win32:LIBS += -L"C:\Program Files (x86)\MindVision\SDK\X64" -lMVCAMSDK_X64 \
               -L"pdcurses\lib" -lpdcurses
 
 HEADERS += \
+    GF120.h \
     brightness.h \
     defectpixelalg.h \
     mindvision.h \

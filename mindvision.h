@@ -153,6 +153,56 @@ public:
     void fpn_clear();
     void fpn(int);
 
+    void infrared_thermometry(int index);
+    void infrared_color(int index);
+    void infrared_display(int index);
+    void infrared_shutter(int value);
+    void infrared_cool(int value);
+    void infrared_emissivity(int value);
+    void infrared_sharpen(int value);
+    void infrared_dde(int value);
+    void infrared_exposure(int value);
+    void infrared_factory_check_exposure(int value);
+    void infrared_status(bool output);
+    void infrared_manual(bool checked,short value);
+    void infrared_temperature_check();
+    void infrared_temperature_check_stop(bool checked);
+    void infrared_factory_check_temperature_check_stop();
+    void infrared_shutter_temperature_raise_sample(bool checked);
+    void infrared_factory_check_detect(bool checked);
+    void infrared_response_rate_sample(bool checked);
+    void infrared_temperature_curve_sample(bool checked);
+
+    void infrared_factory_check();
+
+    void infrared_frame_temp_cnt(int value);
+    void infrared_params_status();
+    void infrared_sample_path(string path);
+
+    void infrared_response_rate_start(int value,string path);
+    void infrared_response_rate_status();
+    void infrared_response_rate_stop();
+    void infrared_load_response_rate_file(string path,string path2);
+    void infrared_cover_start(int value,string path);
+    void infrared_cover_status();
+    void infrared_cover_stop();
+    void infrared_load_cover_file(string path,string path2);
+    void infrared_save_config(vector<string>);
+    void infrared_delete_config();
+    void infrared_cmd(string cmd);
+
+    void infrared_osd(bool checked);
+    void infrared_temperature_display(bool checked);
+    void infrared_temperature_roi_status(bool output);
+    void infrared_roi(bool checked,int index,int user_width_start,int user_width_number,int user_high_start,int user_high_number,int user_roi_emissivity);
+    void infrared_blackbody_calibrate(bool checked,int blackbody_temprature,int user_width_start,int user_width_end,int user_high_start,int user_high_end);
+    void infrared_color_map(bool checked,int low,int high);
+    void infrared_temperature_compensation(int value);
+    void infrared_distance_compensation(int value);
+    void infrared_humidity_compensation(int value);
+    void infrared_high_warm(bool checked,int temperature);
+    void infrared_low_warm(bool checked,int temperature);
+
 private:
     struct {
         int num = 0;
@@ -174,7 +224,7 @@ private:
     tSdkCameraCapbility capability;
     tSdkCameraDevInfo camera_info;
 
-    QSharedMemory sm;
+    QSharedMemory sm,infrared_sm,infrared_params_sm,infrared_temperature_roi_sm;
 
     SnapshotThread st;
     RecordThread rt;
